@@ -1,4 +1,4 @@
-# ZotQuery 3.0.12 候选版架构
+# ZotQuery 3.0.13 候选版架构
 
 ```text
 Zotero PDF ── ZotQuery Search ──┐

@@ -117,10 +117,10 @@
     <html:div id="zotquery-embeddingModel-status" class="lne-note"></html:div>
 
     <html:div class="lne-box">
-      <html:strong>本机 embedding server</html:strong>
-      <html:p class="lne-note">连接兼容 OpenAI embedding API 的本机服务。</html:p>
+      <html:strong>本机或局域网 embedding server</html:strong>
+      <html:p class="lne-note">连接兼容 OpenAI embedding API 的本机或可信局域网服务。支持 10.x、172.16–31.x、192.168.x 私有 IPv4 地址；HTTP 连接不加密。不同服务地址使用独立向量缓存，切换地址后需补建索引。</html:p>
       <html:div class="lne-row">
-        <html:label for="zotquery-server-url">地址</html:label><html:input id="zotquery-server-url" type="text" value="http://127.0.0.1:1234" style="width:240px"/>
+        <html:label for="zotquery-server-url">地址</html:label><html:input id="zotquery-server-url" type="text" value="http://127.0.0.1:1234" placeholder="http://192.168.1.10:11434" style="width:240px"/>
         <button id="zotquery-server-test" label="连接并列出模型"/><html:span id="zotquery-server-status" class="lne-note"></html:span>
       </html:div>
       <hbox id="zotquery-server-model-row" style="display:none">

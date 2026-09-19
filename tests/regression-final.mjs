@@ -267,7 +267,7 @@ assert(researchSource.includes("led.synthesisAllowed===true&&blockers.length===0
 assert(researchSource.includes("if(!directValueSupported(value,quote))throw"), "DIRECT insertion must bind the value to its verified quote");
 assert(researchSource.includes("resolution_position_id") && researchSource.includes("resolution_quote"), "conflict adjudication must persist PDF provenance");
 
-assert.equal(manifest.version, "3.0.12", "manifest must identify the stable release");
+assert.equal(manifest.version, "3.0.13", "manifest must identify the stable release");
 assert(nativeSource.includes('if (explicitProfile && !noteProfiles().matches'), "a fixed Note Profile must not bypass index scope");
 assert(nativeSource.includes('reason: "library-out-of-scope"'), "item notifier must honor Note library scope");
 assert(/^https:\/\//.test(manifest.applications.zotero.update_url), "Zotero requires an HTTPS update_url to accept the manifest");
@@ -342,4 +342,35 @@ assert(nativeSource.includes('queryReady: !!probe?.ready'), "health must report 
 assert(preferencesView.includes("研究系统状态") && preferencesView.includes("共享向量模型") && preferencesView.includes("Agent 与统一 MCP"), "preferences must use the Research workflow information architecture");
 assert(dashboardView.includes("创建证据研究会话") && dashboardView.includes("EXACT：必须由 PDF FactRecord 闭合"), "dashboard must expose evidence-first workflow controls");
 
-console.log("3.0.12 public-candidate offline regression tests passed");
+// Each bundled search entry point embeds the server URL policy. Keep them in sync:
+// inference may use trusted LAN IPs, but the research MCP remains loopback-only.
+for (const [file, endMarker, validatorName] of [
+  ["index.js", "var Fe;", "H"],
+  ["search-dialog-vtable.js", "var U;", "lt"],
+  ["similar-documents-dialog.js", "var K;", "ot"],
+]) {
+  const source = fs.readFileSync(path.join(root, "content", "scripts", file), "utf8");
+  const start = source.indexOf("function isPrivateLANHost(");
+  const end = source.indexOf(endMarker, start);
+  assert(start >= 0 && end > start, `${file} must have the LAN server policy`);
+  const validate = vm.runInNewContext(`${source.slice(start, end)}; ${validatorName}`, { URL });
+  for (const address of ["127.0.0.1", "10.1.2.3", "172.16.0.2", "172.31.255.254", "192.168.1.5"]) {
+    assert.equal(validate(`http://${address}:11434`).hostname, address, `${file} must accept ${address}`);
+  }
+  for (const address of ["172.15.0.1", "172.32.0.1", "192.169.1.5", "169.254.1.2", "8.8.8.8", "example.org"]) {
+    assert.throws(() => validate(`http://${address}:11434`), `${file} must reject ${address}`);
+  }
+  assert.throws(() => validate("http://user:password@10.1.2.3:11434"), `${file} must reject URL credentials`);
+  assert.throws(() => validate("file:///tmp/model"), `${file} must reject non-HTTP URLs`);
+  assert(source.includes('redirect:"error"'), `${file} must reject inference-server redirects`);
+  if (file === "index.js") {
+    const idStart = source.indexOf("function et(");
+    const idEnd = source.indexOf("function Oe(", idStart);
+    assert(idStart >= 0 && idEnd > idStart);
+    const modelId = vm.runInNewContext(`${source.slice(idStart, idEnd)}; ${source.slice(start, end)}; et`, { URL });
+    assert.notEqual(modelId("bge-m3:latest", "http://10.1.2.3:11434"), modelId("bge-m3:latest", "http://127.0.0.1:11434"), "different inference endpoints must not share a vector-cache model ID");
+    assert(source.includes("id:et(re.modelName,re.baseUrl)"), "new server registrations must use endpoint-scoped model IDs");
+  }
+}
+
+console.log("3.0.13 public-candidate offline regression tests passed");

@@ -4,7 +4,7 @@
 
 ZotQuery 是面向 Zotero 10 的本地文献研究插件，重点不是从几个搜索命中直接生成答案，而是让结论能够回到具体原文。它把 PDF 与 Zotero 笔记纳入同一研究流程：发现候选文献、预先界定覆盖范围、阅读和审查原文、记录带类型的事实，再输出区分已核验与尚未完成部分的报告。研究 Agent 也可通过 `zotquery_*` MCP 工具使用这条流程。
 
-**发布状态：**3.0.12 是清理个人数据后的[**公开预发布候选版**](https://github.com/poesein/ZotQuery/releases/tag/v3.0.12)，不是通过实机验收的生产正式版。已有离线回归测试，但尚未完成 Zotero 10 启动、旧版升级、索引及 MCP 的联合实测。打包 ONNX 模型通过 Git LFS 跟踪，克隆源码后需运行 `git lfs pull`。安装前请先看[已知限制](#已知限制与发布状态)和[授权与隐私](#来源授权与隐私)。
+**发布状态：**3.0.13 是清理个人数据后的[**公开预发布候选版**](https://github.com/poesein/ZotQuery/releases/tag/v3.0.13)，不是通过实机验收的生产正式版。已有离线回归测试，但尚未完成 Zotero 10 启动、旧版升级、索引及 MCP 的联合实测。打包 ONNX 模型通过 Git LFS 跟踪，克隆源码后需运行 `git lfs pull`。安装前请先看[已知限制](#已知限制与发布状态)和[授权与隐私](#来源授权与隐私)。
 
 ## 适合什么研究？为什么使用它？
 
@@ -58,10 +58,10 @@ PDF 和笔记使用**同一个活动向量模型**。Note 向量按文段哈希�
 
 ## 安装与部署
 
-1. 确认 **Zotero 10.0.x**，从 [v3.0.12 预发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.0.12)下载候选 XPI，先读[发布审计](docs/RELEASE-AUDIT-ZH.md)，备份 Zotero 数据目录并正常退出 Zotero。建议先在隔离或已备份的 profile 测试候选包。
-2. 从 Zotero 插件管理器安装候选 XPI 并重启。ZotQuery 现使用独立扩展 ID（`zotquery@poesein.github.io`）、偏好、chrome 资源及 SQLite 文件，可与 ZotSeek 并装而不共用可写状态。由于 ID 已更改，3.0.12 **不会原位升级**曾使用 ZotSeek ID 的 ZotQuery 3.0.11 候选包；旧索引和设置保留原状，不会自动复制。请先备份 profile，再重新索引或另行评估迁移；不要手动覆盖扩展文件、数据库或偏好。
+1. 确认 **Zotero 10.0.x**，从 [v3.0.13 预发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.0.13)下载候选 XPI，先读[发布审计](docs/RELEASE-AUDIT-ZH.md)，备份 Zotero 数据目录并正常退出 Zotero。建议先在隔离或已备份的 profile 测试候选包。
+2. 从 Zotero 插件管理器安装候选 XPI 并重启。ZotQuery 现使用独立扩展 ID（`zotquery@poesein.github.io`）、偏好、chrome 资源及 SQLite 文件，可与 ZotSeek 并装而不共用可写状态。由于 ID 已更改，3.0.13 **不会原位升级**曾使用 ZotSeek ID 的 ZotQuery 3.0.11 候选包；旧索引和设置保留原状，不会自动复制。请先备份 profile，再重新索引或另行评估迁移；不要手动覆盖扩展文件、数据库或偏好。
 3. 打开 **ZotQuery 设置 → 研究系统状态**，比较插件管理器版本与 `/zotquery/health`；分别查看 PDF/Note 索引状态、共享模型一致性和**查询时模型可用性**。若启动失败，保留具体报错，不要清空 Zotero profile。
-4. 选择 PDF 的“仅题名与摘要”或“完整 PDF”、文库范围和活动向量模型。要做原文证据核验，必须索引 PDF 原文；只有题名摘要不能提供可靠的 PDF 原文文段。本机 embedding server 是可选方案，使用时须单独启动。先用少量 PDF 与 Note 混合样本验证，再批量索引。
+4. 选择 PDF 的“仅题名与摘要”或“完整 PDF”、文库范围和活动向量模型。要做原文证据核验，必须索引 PDF 原文；只有题名摘要不能提供可靠的 PDF 原文文段。兼容 OpenAI 的 embedding server 可在本机或可信的私有 IPv4 局域网地址运行，例如 `http://192.168.1.10:11434`；公网地址会被拒绝。先从 Zotero 所在机器验证 `/v1/models` 和 `/v1/embeddings`，注意 HTTP 会在局域网中明文传输文本及 API key。服务模型 ID 包含端点，不同主机的向量不会静默混用；切换主机后需要为新模型补建索引。先用少量 PDF 与 Note 混合样本测试。
 5. 在**笔记索引**中选“我的文库/全部文库”“全部笔记/字面量匹配”及 Note Profile。候选版默认**关闭**笔记变更自动跟踪；准备好后点击“立即同步笔记与向量”。已有用户偏好可能覆盖默认值。`generic` 兜底其他笔记；`strawberry-vnext` 仅兼容旧“精读笔记”格式，不含研究主题。若固定选择 Profile，将优先于自动识别。
 6. 在设置中点击**复制 MCP 令牌**，为每个客户端配置 `Authorization: Bearer <令牌>`。不要通过局域网/公网反向代理暴露端口。此研究 MCP 含可写操作，不能等同于上游只读搜索 MCP。
 

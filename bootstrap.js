@@ -1,4 +1,4 @@
-/** ZotQuery-LNE Research 3.0.12 bootstrap. */
+/** ZotQuery-LNE Research 3.0.13 bootstrap. */
 
 var chromeHandle;
 

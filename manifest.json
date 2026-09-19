@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ZotQuery",
-  "version": "3.0.12",
+  "version": "3.0.13",
   "description": "ZotQuery: unified PDF and Note search, evidence scanning, persistent surveys, and research MCP tools.",
   "author": "José Fernandes; ZotQuery integration",
   "homepage_url": "https://github.com/poesein/ZotQuery",
