@@ -4,7 +4,7 @@
 
 ZotQuery is a Zotero 10 plugin for *research with traceable evidence*, not a chatbot that answers from a few search hits. It joins indexed PDFs and Zotero notes in one local workflow: discover candidate works, define what must be covered, inspect source passages, record typed facts, and render a report that distinguishes verified findings from unfinished work. An agent can use the same workflow through `zotquery_*` MCP tools.
 
-**Release status:** 3.0.11 is a privacy-sanitized **source candidate**, not an accepted binary release. Offline regression tests are available, but this candidate has not passed live Zotero 10 startup, upgrade, indexing, and MCP acceptance tests. The bundled ONNX model is tracked with Git LFS; `git lfs pull` is needed after cloning the source. [Known limitations](#limitations-and-release-status) and [redistribution checks](#attribution-licenses-and-privacy) matter before installation or publication.
+**Release status:** 3.0.11 is a privacy-sanitized [**public pre-release candidate**](https://github.com/poesein/ZotQuery/releases/tag/v3.0.11), not an accepted production release. Offline regression tests are available, but this candidate has not passed live Zotero 10 startup, upgrade, indexing, and MCP acceptance tests. The bundled ONNX model is tracked with Git LFS; `git lfs pull` is needed after cloning the source. Read the [known limitations](#limitations-and-release-status) and [redistribution checks](#attribution-licenses-and-privacy) before installing.
 
 ## Why use it?
 
@@ -58,7 +58,7 @@ The PDF and Note paths share **one active embedding model**. Note vectors are ca
 
 ## How to install and deploy
 
-1. Confirm **Zotero 10.0.x** and review the [release audit](docs/RELEASE-AUDIT-ZH.md). Back up the Zotero data directory and close Zotero before an upgrade. Test the candidate first in a separate or backed-up profile.
+1. Confirm **Zotero 10.0.x**, download the candidate XPI from the [v3.0.11 pre-release](https://github.com/poesein/ZotQuery/releases/tag/v3.0.11), and review the [release audit](docs/RELEASE-AUDIT-ZH.md). Back up the Zotero data directory and close Zotero before an upgrade. Test the candidate first in a separate or backed-up profile.
 2. Install the candidate XPI through Zotero's plugin manager and restart. Do not manually replace extension files, SQLite databases, or preferences. The historical extension ID `zotseek@zotero.org` and some internal preference/database names are retained **only for migration compatibility**; the product and public API are ZotQuery.
 3. Open **ZotQuery Settings → Research system status**. Compare the plugin-manager version with `/zotquery/health`; inspect PDF/Note index state, shared-model consistency, and **live query readiness** separately. Preserve any startup error rather than clearing the profile.
 4. Choose PDF scope (`title/abstract` or `full PDF`), library scope, and the active embedding model. For source-level evidence work, full-PDF indexing is needed; title/abstract indexing cannot provide a verified PDF passage. Optional local embedding servers must be started separately. Test a small mixed PDF/Note sample before a large run.
@@ -75,7 +75,7 @@ Authorization: Bearer <token>
 
 The port may differ on your system. `/zotquery/*` REST and MCP require the bearer token. The [deployment checklist](docs/DEPLOY-3.0-ZH.md) and [MCP authentication guide](docs/MCP-AUTH-ZH.md) give more detail. A machine process able to read the Zotero profile can also recover its token; the token is not a defense against such a process.
 
-This source snapshot is not a public binary release. Developers who need a test XPI can follow the [source build guide](docs/BUILDING.md); it checks the Git LFS model hash and packages an explicit file allowlist. Do not treat a successful build as live Zotero acceptance.
+The public XPI is a **pre-release candidate**, not a validated production build. Developers can reproduce a test XPI with the [source build guide](docs/BUILDING.md); it checks the Git LFS model hash and packages an explicit file allowlist. Do not treat a successful build as live Zotero acceptance.
 
 ## Using ZotQuery
 

@@ -4,7 +4,7 @@
 
 ZotQuery 是面向 Zotero 10 的本地文献研究插件，重点不是从几个搜索命中直接生成答案，而是让结论能够回到具体原文。它把 PDF 与 Zotero 笔记纳入同一研究流程：发现候选文献、预先界定覆盖范围、阅读和审查原文、记录带类型的事实，再输出区分已核验与尚未完成部分的报告。研究 Agent 也可通过 `zotquery_*` MCP 工具使用这条流程。
 
-**发布状态：**3.0.11 是清理个人数据后的**源码候选版**，不是通过实机验收的正式二进制发布版。已有离线回归测试，但尚未完成 Zotero 10 启动、旧版升级、索引及 MCP 的联合实测。打包 ONNX 模型通过 Git LFS 跟踪，克隆源码后需运行 `git lfs pull`。安装或公开分发前，请先看[已知限制](#已知限制与发布状态)和[授权与隐私](#来源授权与隐私)。
+**发布状态：**3.0.11 是清理个人数据后的[**公开预发布候选版**](https://github.com/poesein/ZotQuery/releases/tag/v3.0.11)，不是通过实机验收的生产正式版。已有离线回归测试，但尚未完成 Zotero 10 启动、旧版升级、索引及 MCP 的联合实测。打包 ONNX 模型通过 Git LFS 跟踪，克隆源码后需运行 `git lfs pull`。安装前请先看[已知限制](#已知限制与发布状态)和[授权与隐私](#来源授权与隐私)。
 
 ## 适合什么研究？为什么使用它？
 
@@ -58,7 +58,7 @@ PDF 和笔记使用**同一个活动向量模型**。Note 向量按文段哈希�
 
 ## 安装与部署
 
-1. 确认 **Zotero 10.0.x**，先读[发布审计](docs/RELEASE-AUDIT-ZH.md)，备份 Zotero 数据目录并正常退出 Zotero。建议先在隔离或已备份的 profile 测试候选包。
+1. 确认 **Zotero 10.0.x**，从 [v3.0.11 预发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.0.11)下载候选 XPI，先读[发布审计](docs/RELEASE-AUDIT-ZH.md)，备份 Zotero 数据目录并正常退出 Zotero。建议先在隔离或已备份的 profile 测试候选包。
 2. 从 Zotero 插件管理器安装候选 XPI，重新启动。不要手动覆盖扩展文件、SQLite 数据库或偏好。历史扩展 ID `zotseek@zotero.org` 及少量内部偏好/数据库名仅为**旧数据迁移兼容**保留；当前产品名和公开接口均为 ZotQuery。
 3. 打开 **ZotQuery 设置 → 研究系统状态**，比较插件管理器版本与 `/zotquery/health`；分别查看 PDF/Note 索引状态、共享模型一致性和**查询时模型可用性**。若启动失败，保留具体报错，不要清空 Zotero profile。
 4. 选择 PDF 的“仅题名与摘要”或“完整 PDF”、文库范围和活动向量模型。要做原文证据核验，必须索引 PDF 原文；只有题名摘要不能提供可靠的 PDF 原文文段。本机 embedding server 是可选方案，使用时须单独启动。先用少量 PDF 与 Note 混合样本验证，再批量索引。
@@ -75,7 +75,7 @@ Authorization: Bearer <令牌>
 
 `/zotquery/*` REST 与 MCP 均需令牌。详见[部署验收清单](docs/DEPLOY-3.0-ZH.md)和 [MCP 认证说明](docs/MCP-AUTH-ZH.md)。若恶意本地进程能够读取 Zotero profile，它也可能取得令牌；令牌不能防御这种情况。
 
-此源码快照尚不是公开二进制发行版。开发者若需测试 XPI，可按[源码构建说明](docs/BUILDING.md)检查 Git LFS 模型哈希并使用白名单打包；构建成功不等于 Zotero 实机验收通过。
+公开 XPI 仍是**预发布候选包**，不是通过验收的生产版。开发者也可按[源码构建说明](docs/BUILDING.md)检查 Git LFS 模型哈希并使用白名单打包；构建成功不等于 Zotero 实机验收通过。
 
 ## 使用方法
 
