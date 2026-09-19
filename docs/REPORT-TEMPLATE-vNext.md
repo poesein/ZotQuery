@@ -1,6 +1,6 @@
 # ZotQuery 全量研究输出模板 vNext
 
-> 适用系统：ZotQuery 3.0.13 及其 Query Contract v2、Coverage Gate v2、ZotQuery Core / Search / Evidence / Survey / MCP / Agent。
+> 适用系统：ZotQuery 3.0.14 及其 Query Contract v2、Coverage Gate v2、ZotQuery Core / Search / Evidence / Survey / MCP / Agent。
 > 报告类型：全库候选审计、原文证据核验、结构或序列精确事实、机制比较及争议研究。  
 > 此文件是报告写作模板，不是系统已完成任何一次检索、阅读或实验的声明。
 

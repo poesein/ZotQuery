@@ -1,12 +1,14 @@
 # ZotQuery 公开发布前审计与修补状态
 
-状态：**3.0.13 候选源码已修补下列四项，但尚未经过 Zotero 10 实机安装与迁移验收，不建议作为已验收正式版公开发布**。原始审阅对象为 3.0.9；修补位于独立候选源码，未修改正式安装。`node tests/regression-final.mjs` 包含新反例并通过；未运行破坏性迁移或索引重建。
+状态：**3.0.14 为公开预发布候选版，不是生产正式版**。原始四项门禁修补仍在；本机 Zotero 10 已确认管理器版本、实时健康、既有 PDF/Note 索引和带认证 MCP 搜索。尚未做全新 profile、完整旧数据迁移或两个在线推理主机间的端到端切换验收。`node tests/regression-final.mjs` 包含模型地址切换与回退反例并通过；没有为了本次修复执行破坏性索引重建。
 
 3.0.12 起将扩展 ID 改为 `zotquery@poesein.github.io`，并隔离偏好、chrome 资源及 PDF/Note/Research 数据库。它不会原位升级旧 ID 的 3.0.11 候选包，也不会自动复制旧数据；旧版仍需通过 Zotero 插件管理器识别和处理，实机并装与迁移尚待验证。
 
-3.0.13 允许推理客户端连接 loopback 与私有 IPv4 局域网端点；公网主机、内嵌凭据与 HTTP 重定向仍被拒绝。服务模型 ID 现包含端点 origin，避免不同主机上同名模型共享向量缓存。已从 Zotero 所在机器直接验证局域网 `/v1/models` 与 1024 维 BGE-M3 `/v1/embeddings`；插件内实机查询仍待验收。
+3.0.13 允许推理客户端连接 loopback 与私有 IPv4 局域网端点；公网主机、内嵌凭据与 HTTP 重定向仍被拒绝。服务模型 ID 加入端点 origin，避免未经核验就让不同主机的同名模型共享向量。已从 Zotero 所在机器直接验证局域网 `/v1/models` 与 1024 维 BGE-M3 `/v1/embeddings`；3.0.14 又通过了插件内实机 MCP 查询。
 
-## 已在候选源码修补，仍需实机验证
+3.0.14 增加有条件的索引身份沿用：只有 Ollama 摘要、维度、前缀和固定文档/查询探针相符，且目标注册项没有 PDF 索引时，才把新地址接到旧索引 ID；原 PDF/Note 数据行不搬迁、不删除。不可核验或真实换模时仍隔离缓存；连接失败恢复原活动模型。旧本机服务在验收时未启动，因此跨两个在线地址的切换仍属待验项目。[具体规则](MODEL-ENDPOINT-COMPATIBILITY.md)。
+
+## 已修补的门禁
 
 1. **零候选门禁。** `finalize()` 明确阻断 `reviewUnits===0`，最终许可还须满足 `sessionLedger().synthesisAllowed`；离线测试覆盖零结果 STANDARD 会话。
 2. **DIRECT 值与引文。** 写入时要求原始 PDF 引文含有边界完整的字面值，且位置已被审查为 `reviewed`、`supportsQuestion=yes`；既有 DIRECT 记录在台账中重新核验，不满足者不能关闭 EXACT 槽或通过 Gate。换算、映射、概括值须作为 INFERRED 另行记录，不能伪装成 DIRECT。字面出现仍不等于语义蕴含，否定、单位和同源编号仍需人工确认。
@@ -19,8 +21,8 @@
 6. 相邻词法命中会聚合为一个 review unit，非代表位置变为 navigation。当前 Gate 覆盖的是 hard-query 聚合单元，不是逐个原始命中；对要求逐段穷尽的问题需检查所有 raw positions 或提供严格模式。
 7. Survey 提升完成仅检查 `promotionComplete`；`missingWorks` 与 `failedWorks` 被记录，却不阻断该条件。应定义核心 Note 失败是否必须阻断，至少在最终报告显著暴露。
 8. 设置页标题仍写 3.0.7，和 3.0.9 manifest 不一致。新候选包已改为中性标题，但仍须 Zotero 10 实机检查中英文布局与保存/重启行为。
-9. 已加入 ZotQuery 根目录 MIT LICENSE、依据上游 MIT 声明与 SPDX 标准正文重建的 ZotSeek 许可证说明，以及模型/运行时的 Apache-2.0 与 MIT 文本；打包 Nomic ONNX 与官方文件的 SHA256 相同。但上游 `v1.21.2` 仓库没有原始 LICENSE 文件，完整著作权人名单仍须核实；打包 WASM/压缩运行时资产的具体来源版本尚未逐一匹配，也没有可复现的正式构建流水线。源自 ZotSeek 的兼容 ID/偏好/数据库名应在迁移前保持，不能机械删除。
-10. 未完成当前 XPI 的 Zotero 10 安装、`extensions.json` 版本/路径、带 Bearer 令牌的实时 `/health` 和 MCP、模型查询、PDF/Note 索引与旧数据迁移的联合验收。离线测试、XPI 文件存在或缓存覆盖率都不能替代这些检查。
+9. 已加入 ZotQuery 根目录 MIT LICENSE、依据上游 MIT 声明与 SPDX 标准正文重建的 ZotSeek 许可证说明，以及模型/运行时的 Apache-2.0 与 MIT 文本；打包 Nomic ONNX 与官方文件的 SHA256 相同。但上游 `v1.21.2` 仓库没有原始 LICENSE 文件，完整著作权人名单仍须核实；打包 WASM/压缩运行时资产的具体来源版本尚未逐一匹配，也没有可复现的正式构建流水线。ZotQuery 的独立 ID/偏好/数据库不得重新与 ZotSeek 共用可写状态。
+10. 本机 3.0.14 已核对 `extensions.json` 活动版本、带令牌的实时 `/zotquery/health`、MCP 搜索、模型查询与既有 PDF/Note 索引；仍未覆盖全新 profile、旧 ID 数据迁移或两个在线服务之间的地址切换。离线测试、XPI 文件存在或缓存覆盖率都不能替代这些剩余检查。
 
 ## 已核对的积极设计
 

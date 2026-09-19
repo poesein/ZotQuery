@@ -1,4 +1,4 @@
-/* ZotQuery Evidence 3.0.13
+/* ZotQuery Evidence 3.0.14
  * Evidence Engine layered on the Search component.
  * Keeps normal search/indexing intact while adding exhaustive lexical
  * passage enumeration, semantic-union retrieval, adaptive context, LNE bridge,
@@ -7,7 +7,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "3.0.13";
+  const VERSION = "3.0.14";
   const DB = "zotquery";
   const RDB = "zotqueryresearch";
   const RFILE = "zotquery-research.sqlite";

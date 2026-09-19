@@ -1,4 +1,4 @@
-# ZotQuery 3.0.13 候选版配置文件
+# ZotQuery 3.0.14 候选版配置文件
 
 ## Note Profile
 

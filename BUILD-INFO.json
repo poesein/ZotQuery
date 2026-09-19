@@ -1,6 +1,6 @@
 {
   "product": "ZotQuery",
-  "version": "3.0.13",
+  "version": "3.0.14",
   "upstream": "ZotSeek 1.21.2",
   "upstream_sha256": "7daaf964b1f11da274f201a1671dc82560add264f4b56f0b602c31b067ce2e69",
   "plugin_id": "zotquery@poesein.github.io",
@@ -17,7 +17,7 @@
   "identifier_policy": "order-significant; no automatic ASCII-degradation aliases",
   "lneNative": true,
   "lneNativeMilestone": "stable-native-unified-research",
-  "embeddingContract": "one active ZotQuery Search model shared by PDF chunks and Note segments",
+  "embeddingContract": "one active ZotQuery Search model shared by PDF chunks and Note segments; verified equivalent endpoints retain the indexed cache identity",
   "legacyLNEFallback": false,
   "persistentLNESurveys": true
 }

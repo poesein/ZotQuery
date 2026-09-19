@@ -108,7 +108,7 @@
 
   <html:details class="zotquery-prefs-group" id="zotquery-group-models" open="">
     <html:summary>共享向量模型</html:summary>
-    <html:p class="lne-note">PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。切换模型后，两类索引都会按 model ID 增量补齐，旧向量不会被破坏。</html:p>
+    <html:p class="lne-note">PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。验证为同一模型的地址切换可复用现有索引；真正更换模型时需补建向量，旧向量不会被破坏。</html:p>
     <html:div class="lne-row">
       <html:label for="zotquery-pref-embeddingModel">当前模型</html:label>
       <menulist id="zotquery-pref-embeddingModel" native="true" style="min-width:300px"><menupopup/></menulist>
@@ -118,7 +118,7 @@
 
     <html:div class="lne-box">
       <html:strong>本机或局域网 embedding server</html:strong>
-      <html:p class="lne-note">连接兼容 OpenAI embedding API 的本机或可信局域网服务。支持 10.x、172.16–31.x、192.168.x 私有 IPv4 地址；HTTP 连接不加密。不同服务地址使用独立向量缓存，切换地址后需补建索引。</html:p>
+      <html:p class="lne-note">连接兼容 OpenAI embedding API 的本机或可信局域网服务。支持 10.x、172.16–31.x、192.168.x 私有 IPv4 地址；HTTP 连接不加密。只有模型摘要、嵌入规则和实际输出均通过核验，才会在切换地址时复用现有索引。</html:p>
       <html:div class="lne-row">
         <html:label for="zotquery-server-url">地址</html:label><html:input id="zotquery-server-url" type="text" value="http://127.0.0.1:1234" placeholder="http://192.168.1.10:11434" style="width:240px"/>
         <button id="zotquery-server-test" label="连接并列出模型"/><html:span id="zotquery-server-status" class="lne-note"></html:span>

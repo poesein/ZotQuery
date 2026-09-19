@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(?:([A-Za-z]:))/, "$1")), "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const nativePath = path.join(root, "content", "scripts", "lne-native.js");
 const toolsPath = path.join(root, "content", "scripts", "lne-tools.js");
 const researchPath = path.join(root, "content", "scripts", "research-engine.js");
@@ -267,7 +268,7 @@ assert(researchSource.includes("led.synthesisAllowed===true&&blockers.length===0
 assert(researchSource.includes("if(!directValueSupported(value,quote))throw"), "DIRECT insertion must bind the value to its verified quote");
 assert(researchSource.includes("resolution_position_id") && researchSource.includes("resolution_quote"), "conflict adjudication must persist PDF provenance");
 
-assert.equal(manifest.version, "3.0.13", "manifest must identify the stable release");
+assert.equal(manifest.version, "3.0.14", "manifest must identify the local candidate version");
 assert(nativeSource.includes('if (explicitProfile && !noteProfiles().matches'), "a fixed Note Profile must not bypass index scope");
 assert(nativeSource.includes('reason: "library-out-of-scope"'), "item notifier must honor Note library scope");
 assert(/^https:\/\//.test(manifest.applications.zotero.update_url), "Zotero requires an HTTPS update_url to accept the manifest");
@@ -369,8 +370,86 @@ for (const [file, endMarker, validatorName] of [
     assert(idStart >= 0 && idEnd > idStart);
     const modelId = vm.runInNewContext(`${source.slice(idStart, idEnd)}; ${source.slice(start, end)}; et`, { URL });
     assert.notEqual(modelId("bge-m3:latest", "http://10.1.2.3:11434"), modelId("bge-m3:latest", "http://127.0.0.1:11434"), "different inference endpoints must not share a vector-cache model ID");
-    assert(source.includes("id:et(re.modelName,re.baseUrl)"), "new server registrations must use endpoint-scoped model IDs");
+    assert(source.includes("const preferredId=et(re.modelName,re.baseUrl)"), "server registrations must retain a distinct provisional ID until equivalence is verified");
+    assert(source.includes("existing.verifiedDigest || existing.baseUrl"), "re-registering a changed model under one tag must not erase its verified fingerprint");
   }
 }
 
-console.log("3.0.13 public-candidate offline regression tests passed");
+// Same model at another trusted server must retain the indexed cache ID only
+// after both model metadata and query/document output behavior are verified.
+{
+  const source = fs.readFileSync(path.join(root, "content", "scripts", "index.js"), "utf8");
+  const begin = source.indexOf("async function zotqueryServerDigest(");
+  const end = source.indexOf("var mr=class n{", begin);
+  assert(begin >= 0 && end > begin, "model compatibility guards must be bundled");
+  const digestA = "a".repeat(64), digestB = "b".repeat(64);
+  const endpointDigests = new Map([["http://127.0.0.1:11434", digestA], ["http://192.0.2.19:11434", digestA]]);
+  class FakeClient {
+    constructor(config) { this.config = config; }
+    async request() { return { models: [{ name: "bge-m3:latest", digest: endpointDigests.get(this.config.baseUrl) }] }; }
+    async embed() { return [[1, 0, 0], [0, 1, 0]]; }
+  }
+  const check = vm.runInNewContext(`${source.slice(begin, end)}; zotqueryEquivalentServerModels`, {
+    oe: FakeClient, Se: text => text, Te: () => [],
+  });
+  const local = { id: "local", runtime: "server", baseUrl: "http://127.0.0.1:11434", serverModelName: "bge-m3:latest", dimensions: 3, queryPrefix: "", docPrefix: "", pooling: "mean", normalize: true };
+  const lan = { ...local, id: "lan", baseUrl: "http://192.0.2.19:11434" };
+  assert.equal((await check(local, lan))?.digest, digestA, "same digest and probe outputs allow reuse");
+  assert.equal(await check(local, { ...lan, queryPrefix: "query: " }), null, "changed preprocessing must not reuse vectors");
+  endpointDigests.set(lan.baseUrl, digestB);
+  assert.equal(await check(local, lan), null, "same model tag with different digest must not reuse vectors");
+  endpointDigests.set(lan.baseUrl, digestA);
+  let savedEntries = [{ ...lan }];
+  const remember = vm.runInNewContext(`${source.slice(begin, end)}; zotqueryRememberServerIdentity`, {
+    oe: FakeClient, Se: text => text,
+    Te: () => savedEntries,
+    Ct: entry => { savedEntries = [entry]; },
+  });
+  await remember(lan);
+  assert.equal(savedEntries[0].verifiedDigest, digestA, "startup must remember the verified digest");
+  assert.equal(savedEntries[0].compatibilityProbes.length, 2, "startup must remember fixed probes");
+  endpointDigests.set(lan.baseUrl, digestB);
+  await assert.rejects(remember(lan), /digest changed/, "a model replaced under the same tag must not reuse indexed vectors");
+
+  const switchStart = source.indexOf("async setModel(e){");
+  const switchEnd = source.indexOf("getModelId(){", switchStart);
+  assert(switchStart >= 0 && switchEnd > switchStart);
+  async function runSwitch(equivalent, failFirstInit = false) {
+    let entries = [local, lan], active = local.id, resets = 0, initCalls = 0;
+    const setModel = vm.runInNewContext(`({${source.slice(switchStart, switchEnd)}}).setModel`, {
+      U: id => entries.find(item => item.id === id),
+      Te: () => entries.map(item => ({ ...item })),
+      At: id => { entries = entries.filter(item => item.id !== id); },
+      Ct: entry => { entries = entries.filter(item => item.id !== entry.id); entries.push(entry); },
+      ln: id => { active = id; },
+      ir: "zotquery.serverModels",
+      Zotero: { Prefs: { set: (_name, json) => { entries = JSON.parse(json); } } },
+      zotqueryCanAdoptCache: async () => true,
+      zotqueryEquivalentServerModels: async () => equivalent ? { digest: digestA, probes: [[1,0,0],[0,1,0]] } : null,
+    });
+    const pipeline = { model: local, ready: true, workerReady: true,
+      logger: { info() {}, warn() {} }, reset() { resets++; }, async init() { initCalls++; if (failFirstInit && initCalls === 1) throw new Error("network lost"); this.model = entries.find(item => item.id === active); } };
+    let result, error;
+    try { result = await setModel.call(pipeline, lan.id); }
+    catch (caught) { error = caught; }
+    return { entries, active, resets, result, error, model: pipeline.model };
+  }
+  const adopted = await runSwitch(true);
+  assert.equal(adopted.active, local.id, "equivalent endpoint must keep original indexed identity");
+  assert.equal(adopted.model.baseUrl, lan.baseUrl, "queries must route to the selected LAN server");
+  assert.equal(adopted.entries.length, 1, "duplicate endpoint registration must be removed without deleting DB rows");
+  assert.equal(adopted.resets, 1, "pipeline must reconnect even when the cache ID stays the same");
+  assert.equal(adopted.result.reused, true);
+  const rejected = await runSwitch(false);
+  assert.equal(rejected.active, lan.id, "different model must keep a distinct active identity");
+  assert.equal(rejected.entries.length, 2, "rejected reuse must preserve both registrations");
+  assert.equal(rejected.result.verificationFailed, true);
+  const rolledBack = await runSwitch(true, true);
+  assert.match(rolledBack.error.message, /network lost/, "a failed endpoint connection must be surfaced");
+  assert.equal(rolledBack.active, local.id, "failed adoption must restore the prior active model");
+  assert.equal(rolledBack.entries.length, 2, "failed adoption must restore both registrations");
+  const rejectedAndFailed = await runSwitch(false, true);
+  assert.equal(rejectedAndFailed.active, local.id, "an unreachable new model must restore the previous active model even without adoption");
+}
+
+console.log("3.0.14 model-switch offline regression tests passed");

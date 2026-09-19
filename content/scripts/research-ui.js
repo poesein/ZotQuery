@@ -5,7 +5,7 @@
 "use strict";
 
 ((global) => {
-  const VERSION = "3.0.13";
+  const VERSION = "3.0.14";
   let dashboardWindow = null;
   let observer = null;
   let refreshTimer = null;
@@ -28,9 +28,9 @@
     "内容范围": "Content scope", "仅题名与摘要": "Title and abstract only", "完整 PDF（推荐）": "Full PDF (recommended)",
     "自动索引新文献": "Index new papers automatically", "自动索引延迟（秒）": "Auto-index delay (seconds)",
     "排除书籍": "Exclude books", "排除标签": "Exclusion tag", "共享向量模型": "Shared embedding model",
-    "PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。切换模型后，两类索引都会按 model ID 增量补齐，旧向量不会被破坏。": "PDF chunks and note segments use the same active embedding model. Switching models fills both indexes by model ID without deleting old vectors.",
+    "PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。验证为同一模型的地址切换可复用现有索引；真正更换模型时需补建向量，旧向量不会被破坏。": "PDF chunks and note segments use the same active embedding model. A verified endpoint change reuses the index; a genuinely different model needs new vectors without deleting the old ones.",
     "当前模型": "Active model", "本机或局域网 embedding server": "Local or LAN embedding server",
-    "连接兼容 OpenAI embedding API 的本机或可信局域网服务。支持 10.x、172.16–31.x、192.168.x 私有 IPv4 地址；HTTP 连接不加密。不同服务地址使用独立向量缓存，切换地址后需补建索引。": "Connect a local or trusted-LAN OpenAI-compatible embedding service. Private IPv4 ranges 10.x, 172.16–31.x and 192.168.x are allowed; HTTP is unencrypted. Each server address has a separate vector cache; changing addresses requires indexing the new model.",
+    "连接兼容 OpenAI embedding API 的本机或可信局域网服务。支持 10.x、172.16–31.x、192.168.x 私有 IPv4 地址；HTTP 连接不加密。只有模型摘要、嵌入规则和实际输出均通过核验，才会在切换地址时复用现有索引。": "Connect a local or trusted-LAN OpenAI-compatible embedding service. Private IPv4 ranges 10.x, 172.16–31.x and 192.168.x are allowed; HTTP is unencrypted. Existing indexes are reused only when model digest, embedding settings, and actual outputs are verified equivalent.",
     "地址": "Address", "连接并列出模型": "Connect and list models", "加入共享模型": "Add to shared models",
     "API key（可选）": "API key (optional)",
     "笔记模板与研究输出": "Note templates and research output", "自定义笔记模板": "Custom note template",
