@@ -1,0 +1,4 @@
+{
+  "id": "standard", "name": "Standard Research", "version": "1.0.0",
+  "sections": ["status", "queryContract", "funnel", "coverageGate", "evidenceSlots", "candidateAudit", "facts", "claims", "conflicts", "gaps", "references", "audit"]
+}

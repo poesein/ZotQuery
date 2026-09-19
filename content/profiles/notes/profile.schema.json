@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ZotQuery Note Profile",
+  "type": "object",
+  "required": ["id", "name", "version", "selector", "evidenceTags", "sections"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string" },
+    "selector": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["all", "title-or-content"] },
+        "patterns": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 120 } }
+      }
+    },
+    "evidenceTags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["role"],
+        "properties": {
+          "role": { "enum": ["OBSERVED_EVIDENCE", "AUTHOR_CLAIM", "AUTHOR_INTERPRETATION", "USER_INFERENCE", "EVIDENCE_QUALITY", "BACKGROUND", "LIMITATION", "UNKNOWN"] },
+          "baseWeight": { "type": "number", "minimum": -2, "maximum": 2 },
+          "evidenceWeight": { "type": "number", "minimum": -2, "maximum": 2 },
+          "conclusionWeight": { "type": "number", "minimum": -2, "maximum": 2 }
+        }
+      }
+    },
+    "sections": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } },
+    "title": { "type": "object", "properties": { "stripPrefixes": { "type": "array", "items": { "type": "string" } } } },
+    "duplicatePolicy": { "type": "object" }
+  }
+}

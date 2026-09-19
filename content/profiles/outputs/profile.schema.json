@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ZotQuery Output Profile",
+  "type": "object",
+  "required": ["id", "name", "version", "sections"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string" },
+    "layout": { "type": "string", "enum": ["structured-vnext"] },
+    "templateMarkdown": { "type": "string", "minLength": 1, "maxLength": 65536, "description": "Optional unfilled writing scaffold appended after the canonical evidence ledger." },
+    "templateSha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+    "sections": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" },
+      "allOf": [
+        { "contains": { "const": "status" } },
+        { "contains": { "const": "queryContract" } },
+        { "contains": { "const": "funnel" } },
+        { "contains": { "const": "coverageGate" } },
+        { "contains": { "const": "evidenceSlots" } },
+        { "contains": { "const": "candidateAudit" } },
+        { "contains": { "const": "facts" } },
+        { "contains": { "const": "conflicts" } },
+        { "contains": { "const": "gaps" } },
+        { "contains": { "const": "references" } }
+      ]
+    }
+  }
+}

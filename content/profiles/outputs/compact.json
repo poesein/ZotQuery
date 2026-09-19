@@ -1,0 +1,4 @@
+{
+  "id": "compact", "name": "Compact", "version": "1.0.0",
+  "sections": ["status", "queryContract", "funnel", "coverageGate", "evidenceSlots", "candidateAudit", "facts", "conflicts", "gaps", "references"]
+}

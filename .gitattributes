@@ -1,0 +1,2 @@
+# The bundled ONNX model exceeds GitHub's 100 MB regular-file limit.
+content/models/Xenova/nomic-embed-text-v1.5/onnx/model_quantized.onnx filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,4 @@
+{
+  "id": "exact", "name": "Exact Fact", "version": "1.0.0",
+  "sections": ["status", "identity", "queryContract", "funnel", "coverageGate", "evidenceSlots", "candidateAudit", "facts", "conflicts", "gaps", "references", "audit"]
+}

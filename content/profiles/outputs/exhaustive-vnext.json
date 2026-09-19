@@ -1,0 +1,4 @@
+{
+  "id": "exhaustive-vnext", "name": "Exhaustive vNext", "version": "2.0.0", "layout": "structured-vnext",
+  "sections": ["status", "summary", "identity", "queryContract", "corpusHealth", "funnel", "coverageGate", "evidenceSlots", "candidateAudit", "evidenceUnits", "facts", "claims", "conflicts", "gaps", "references", "audit", "machineAppendix"]
+}

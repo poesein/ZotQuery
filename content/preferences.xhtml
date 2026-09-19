@@ -1,0 +1,192 @@
+<vbox id="zotseek-preferences"
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      onload="Zotero.ZotQuery?.hooks.onPrefsEvent('load',{window}); Zotero.ZotQueryResearchUI?.onPrefsLoad(window);"
+      onunload="Zotero.ZotQueryResearchUI?.onPrefsUnload(window); Zotero.ZotQuery?.hooks.onPrefsEvent('unload',{window});">
+  <linkset><html:link rel="localization" href="zotseek.ftl"/></linkset>
+  <html:style><![CDATA[
+    #zotseek-preferences { --lne-accent:#dc5d89; --lne-green:#248a3d; --lne-red:#c62828; --lne-muted:var(--fill-secondary,#667085); }
+    .lne-hero { padding:14px 16px; margin:4px 0 12px; border-radius:10px; background:linear-gradient(135deg,rgba(157,168,182,.17),rgba(237,96,146,.14)); }
+    .lne-title { font-size:20px; font-weight:750; } .lne-subtitle { margin-top:4px; font-size:11px; color:var(--lne-muted); }
+    details.zotseek-prefs-group { margin:4px 0 11px; }
+    details.zotseek-prefs-group > summary { cursor:pointer; font-size:15px; font-weight:700; padding:7px 0; border-bottom:1px solid var(--material-border,#ddd); }
+    details.zotseek-prefs-group[open] > summary { border-bottom-color:var(--lne-accent); }
+    .lne-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:8px 0; }
+    .lne-card { padding:10px; border:1px solid var(--material-border,#ddd); border-radius:7px; background:var(--material-sidepane,#fafafa); }
+    .lne-card-label { font-size:10px; color:var(--lne-muted); } .lne-card-value { margin-top:3px; font-size:17px; font-weight:700; overflow-wrap:anywhere; }
+    [data-state="ok"] { color:var(--lne-green); } [data-state="bad"] { color:var(--lne-red); }
+    .lne-row { display:flex; align-items:center; gap:8px; margin:7px 0; flex-wrap:wrap; }
+    .lne-note { color:var(--lne-muted); font-size:11px; line-height:1.45; margin:4px 0 8px; }
+    .lne-box { border:1px solid var(--material-border,#ddd); border-radius:7px; padding:10px; margin:8px 0; }
+    .lne-input { min-width:90px; padding:4px 6px; }
+    .zotseek-action-danger { border-color:rgba(198,40,40,.35); }
+    #zotseek-pref-mcpServer, #zotseek-mcpserver-info, #zotseek-mcpserver-warning { display:none !important; }
+    @media (max-width:850px) { .lne-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (prefers-color-scheme:dark) { #zotseek-preferences { --lne-accent:#f287ab; --lne-green:#7bd88b; --lne-red:#ff8989; } }
+  ]]></html:style>
+
+  <html:div class="lne-hero">
+    <html:div class="lne-title">ZotQuery</html:div>
+    <html:div class="lne-subtitle">PDF 与笔记检索、证据审阅、Survey 和研究输出。</html:div>
+  </html:div>
+
+  <html:details class="zotseek-prefs-group" id="zotseek-group-status" open="">
+    <html:summary>研究系统状态</html:summary>
+    <html:div class="lne-grid">
+      <html:div class="lne-card"><html:div class="lne-card-label">整体</html:div><html:div id="lne-health-overall" class="lne-card-value">检查中…</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">PDF 索引</html:div><html:div id="lne-health-pdfs" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">阅读笔记</html:div><html:div id="lne-health-notes" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">Note segments</html:div><html:div id="lne-health-segments" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">Note 向量覆盖</html:div><html:div id="lne-health-vectors" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">共享模型合同</html:div><html:div id="lne-health-contract" class="lne-card-value">-</html:div></html:div>
+    </html:div>
+    <html:div class="lne-box">
+      <html:div class="lne-card-label">PDF 与笔记共用模型</html:div>
+      <html:div id="lne-health-model" style="font-weight:700;margin-top:3px;">-</html:div>
+    </html:div>
+    <hbox>
+      <button id="lne-open-dashboard" label="打开研究工作台"/>
+      <button id="lne-refresh-health" label="刷新状态"/>
+    </hbox>
+
+    <html:div style="display:none">
+      <html:span id="zotseek-stat-papers">-</html:span><html:span id="zotseek-stat-chunks">-</html:span><html:span id="zotseek-stat-storage">-</html:span>
+      <html:span id="zotseek-stat-dbpath">-</html:span><html:span id="zotseek-stat-model-line">-</html:span><html:span id="zotseek-stat-avg-line">-</html:span><html:span id="zotseek-stat-lastindexed-line">-</html:span>
+      <html:span id="zotseek-stat-duration-label">-</html:span><html:span id="zotseek-stat-duration">-</html:span><html:span id="zotseek-stat-indexedmode-label">-</html:span><html:span id="zotseek-stat-indexedmode">-</html:span>
+      <html:div id="zotseek-indexmode-warning"><html:span id="zotseek-warning-indexed-mode"></html:span><html:span id="zotseek-warning-current-mode"></html:span></html:div>
+    </html:div>
+  </html:details>
+
+  <html:details class="zotseek-prefs-group" id="zotquery-group-note-indexing" open="">
+    <html:summary>笔记索引</html:summary>
+    <html:div class="lne-row">
+      <html:label for="lne-note-library-scope">文库范围</html:label>
+      <menulist id="lne-note-library-scope" native="true"><menupopup>
+        <menuitem label="我的文库" value="user"/><menuitem label="全部文库" value="all"/>
+      </menupopup></menulist>
+      <html:label for="lne-note-scope">笔记范围</html:label>
+      <menulist id="lne-note-scope" native="true"><menupopup>
+        <menuitem label="兼容旧版精读笔记" value="reading-notes"/>
+        <menuitem label="全部笔记" value="all"/>
+        <menuitem label="按标题或内容字面量" value="pattern"/>
+      </menupopup></menulist>
+      <html:label for="lne-note-title-pattern">匹配字面量</html:label><html:input id="lne-note-title-pattern" class="lne-input" type="text"/>
+    </html:div>
+    <html:div class="lne-row">
+      <checkbox id="lne-note-autosync" label="自动跟踪笔记变更" native="true"/>
+      <html:label for="lne-note-profile">解析配置</html:label>
+      <menulist id="lne-note-profile" native="true" style="min-width:240px"><menupopup/></menulist>
+    </html:div>
+    <hbox><button id="lne-note-profile-apply" label="保存笔记索引设置"/><button id="lne-sync-notes" label="立即同步笔记与向量"/></hbox>
+    <html:div id="lne-note-profile-status" class="lne-note">读取中…</html:div>
+  </html:details>
+
+  <html:details class="zotseek-prefs-group" id="zotseek-group-indexing" open="">
+    <html:summary>PDF 原文索引</html:summary>
+    <html:p class="lne-note">PDF chunks 是精确事实和稳定 locator 的原始证据层。更新会跳过已完成项目；重建只在模型、范围或切分策略发生实质变化时使用。</html:p>
+    <hbox>
+      <button id="zotseek-update-index" label="更新 PDF 索引"/>
+      <button id="zotseek-rebuild-index" label="重建 PDF 索引"/>
+      <button id="zotseek-refresh-stats" label="刷新 PDF 统计"/>
+    </hbox>
+    <html:div class="lne-row">
+      <html:label for="zotseek-pref-indexingMode">内容范围</html:label>
+      <menulist id="zotseek-pref-indexingMode" native="true"><menupopup>
+        <menuitem label="仅题名与摘要" value="abstract"/><menuitem label="完整 PDF（推荐）" value="full"/>
+      </menupopup></menulist>
+      <html:label for="zotseek-pref-indexScope">文库范围</html:label>
+      <menulist id="zotseek-pref-indexScope" native="true"><menupopup>
+        <menuitem label="我的文库" value="user"/><menuitem label="全部文库" value="all"/>
+      </menupopup></menulist>
+      <checkbox id="zotseek-pref-autoIndex" label="自动索引新文献" native="true"/>
+    </html:div>
+    <html:div id="zotseek-autoindex-delay-row" class="lne-row">
+      <html:label for="zotseek-pref-autoIndexDelay">自动索引延迟（秒）</html:label><html:input id="zotseek-pref-autoIndexDelay" class="lne-input" type="number" min="1" max="300" value="10"/>
+      <checkbox id="zotseek-pref-excludeBooks" label="排除书籍" native="true"/>
+      <html:label for="zotseek-pref-excludeTag">排除标签</html:label><html:input id="zotseek-pref-excludeTag" class="lne-input" type="text" value="zotseek-exclude"/>
+    </html:div>
+  </html:details>
+
+  <html:details class="zotseek-prefs-group" id="zotseek-group-models" open="">
+    <html:summary>共享向量模型</html:summary>
+    <html:p class="lne-note">PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。切换模型后，两类索引都会按 model ID 增量补齐，旧向量不会被破坏。</html:p>
+    <html:div class="lne-row">
+      <html:label for="zotseek-pref-embeddingModel">当前模型</html:label>
+      <menulist id="zotseek-pref-embeddingModel" native="true" style="min-width:300px"><menupopup/></menulist>
+    </html:div>
+    <html:div id="zotseek-embeddingModel-coverage" class="lne-note"></html:div>
+    <html:div id="zotseek-embeddingModel-status" class="lne-note"></html:div>
+
+    <html:div class="lne-box">
+      <html:strong>本机 embedding server</html:strong>
+      <html:p class="lne-note">连接兼容 OpenAI embedding API 的本机服务。</html:p>
+      <html:div class="lne-row">
+        <html:label for="zotseek-server-url">地址</html:label><html:input id="zotseek-server-url" type="text" value="http://127.0.0.1:1234" style="width:240px"/>
+        <button id="zotseek-server-test" label="连接并列出模型"/><html:span id="zotseek-server-status" class="lne-note"></html:span>
+      </html:div>
+      <hbox id="zotseek-server-model-row" style="display:none">
+        <menulist id="zotseek-server-model-menu" native="true" style="min-width:280px"><menupopup/></menulist><button id="zotseek-server-add" label="加入共享模型" disabled="true"/>
+      </hbox>
+      <html:div id="zotseek-server-advanced" style="display:none">
+        <html:div class="lne-row"><html:label>Query prefix</html:label><html:input id="zotseek-server-queryPrefix"/><html:label>Document prefix</html:label><html:input id="zotseek-server-docPrefix"/></html:div>
+        <html:div class="lne-row"><html:label>API key（可选）</html:label><html:input type="password" id="zotseek-server-apiKey"/></html:div>
+      </html:div>
+    </html:div>
+    <html:div id="zotseek-manageModels"></html:div>
+  </html:details>
+
+  <html:details class="zotseek-prefs-group" id="zotquery-group-profiles" open="">
+    <html:summary>笔记模板与研究输出</html:summary>
+    <html:div class="lne-box">
+      <html:strong>自定义笔记模板</html:strong>
+      <html:details><html:summary>从模板生成并导入 Note Profile JSON</html:summary>
+        <html:p class="lne-note">粘贴 Markdown 模板后生成草稿。请自行核对 selector 与每个 evidenceTags 的角色；系统不会自动把普通段落认作原始证据。</html:p>
+        <html:textarea id="lne-note-template-input" rows="4" style="width:100%" placeholder="粘贴 Markdown 笔记模板"></html:textarea>
+        <hbox><button id="lne-note-profile-draft" label="生成待审草稿"/><button id="lne-note-profile-validate" label="校验 JSON"/><button id="lne-note-profile-install" label="确认并导入"/></hbox>
+        <html:textarea id="lne-note-profile-json" rows="8" style="width:100%" placeholder="Note Profile JSON"></html:textarea>
+        <html:div id="lne-note-profile-import-status" class="lne-note"></html:div>
+      </html:details>
+    </html:div>
+    <html:div class="lne-box">
+      <html:strong>默认研究输出格式</html:strong>
+      <html:div class="lne-row">
+        <menulist id="lne-output-profile" native="true" style="min-width:240px"><menupopup/></menulist>
+        <button id="lne-output-profile-save" label="保存默认格式"/>
+      </html:div>
+      <html:div id="lne-output-profile-status" class="lne-note">读取中…</html:div>
+      <html:details><html:summary>导入 Output Profile JSON</html:summary>
+        <html:p class="lne-note">自定义格式必须保留 Query Contract、研究漏斗、Coverage Gate、候选审计、事实槽、冲突和来源。</html:p>
+        <html:textarea id="lne-output-profile-json" rows="7" style="width:100%" placeholder="Output Profile JSON"></html:textarea>
+        <hbox><button id="lne-output-profile-validate" label="校验 JSON"/><button id="lne-output-profile-install" label="确认并导入"/></hbox>
+        <html:div id="lne-output-profile-import-status" class="lne-note"></html:div>
+      </html:details>
+    </html:div>
+  </html:details>
+
+  <html:details class="zotseek-prefs-group" id="zotseek-group-agent" open="">
+    <html:summary>Agent 与统一 MCP</html:summary>
+    <html:p class="lne-note">研究工具统一从本机 ZotQuery MCP 端点提供。</html:p>
+    <html:div class="lne-box"><html:div class="lne-card-label">MCP endpoint</html:div><html:code id="lne-health-mcp">http://127.0.0.1:23119/zotquery/mcp</html:code><hbox><button id="lne-copy-mcp-token" label="复制 MCP 令牌"/><button id="lne-rotate-mcp-token" label="更换 MCP 令牌"/></hbox><html:div id="lne-mcp-token-status" class="lne-note">连接须使用 Authorization: Bearer 令牌；请勿公开令牌。</html:div></html:div>
+  </html:details>
+
+  <html:details class="zotseek-prefs-group" id="zotseek-group-advanced">
+    <html:summary>高级检索与维护</html:summary>
+    <html:div class="lne-row">
+      <html:label>每个 PDF chunk 最大 tokens</html:label><html:input id="zotseek-pref-maxTokens" class="lne-input" type="number" min="100" max="8000"/>
+      <html:label>每篇最大 chunks</html:label><html:input id="zotseek-pref-maxChunksPerPaper" class="lne-input" type="number" min="1" max="1000"/>
+    </html:div>
+    <html:div class="lne-row">
+      <html:label>快速检索 Top K</html:label><html:input id="zotseek-pref-topK" class="lne-input" type="number" min="1" max="500"/>
+      <html:label>最低相似度 %</html:label><html:input id="zotseek-pref-minSimilarity" class="lne-input" type="number" min="0" max="100"/>
+      <checkbox id="zotseek-pref-autoCompact" label="空闲时自动整理数据库" native="true"/>
+    </html:div>
+    <html:div class="lne-box zotseek-action-danger">
+      <html:p class="lne-note">以下操作只维护 PDF embedding 数据库，不会删除 Zotero 文献或笔记。</html:p>
+      <hbox><button id="zotseek-compact-db" label="整理数据库"/><button id="zotseek-clear-index" label="清空 PDF 索引"/><button id="zotseek-purge-orphans-btn" label="清理失联向量"/></hbox>
+      <html:div id="zotseek-orphan-count" class="lne-note">失联向量：-</html:div>
+    </html:div>
+  </html:details>
+
+  <checkbox id="zotseek-pref-mcpServer" hidden="true" native="true" checked="false"/>
+  <html:div id="zotseek-mcpserver-info" style="display:none"><html:span id="zotseek-mcpserver-command"></html:span></html:div>
+  <html:div id="zotseek-mcpserver-warning" style="display:none"></html:div>
+</vbox>

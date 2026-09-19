@@ -1,0 +1,217 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotseek/content/searchDialog.css" type="text/css"?>
+
+<!DOCTYPE window>
+
+<window id="zotseek-dialog"
+        title="ZotQuery"
+        width="700"
+        height="500"
+        persist="width height screenX screenY"
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml">
+
+  <script type="application/javascript">
+  <![CDATA[
+    // Get window arguments
+    const args = window.arguments[0];
+    let searchCallback = args.searchCallback;
+    let openItemCallback = args.openItemCallback;
+    let searchResults = [];
+
+    // Initialize when DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      init();
+    });
+
+    function init() {
+      // Set up event listeners
+      const searchBox = document.getElementById('search-box');
+      const searchButton = document.getElementById('search-button');
+      const resultsList = document.getElementById('results-list');
+
+      // Search on Enter key
+      searchBox.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+          performSearch();
+        }
+      });
+
+      // Search button click
+      searchButton.addEventListener('command', performSearch);
+
+      // Double-click to open item
+      resultsList.addEventListener('dblclick', openSelectedItem);
+
+      // Focus search box
+      searchBox.focus();
+
+      // Resolve init promise
+      if (args._initPromise) {
+        args._initPromise.resolve();
+      }
+    }
+
+    async function performSearch() {
+      const searchBox = document.getElementById('search-box');
+      const query = searchBox.value.trim();
+      
+      if (!query) {
+        return;
+      }
+
+      try {
+        showProgress('Searching...');
+        searchResults = await searchCallback(query);
+        displayResults(searchResults);
+      } catch (error) {
+        showError('Search failed: ' + error.message);
+      }
+    }
+
+    function displayResults(results) {
+      const resultsList = document.getElementById('results-list');
+      const progressBox = document.getElementById('progress-box');
+      const resultsCount = document.getElementById('results-count');
+      
+      // Hide progress
+      progressBox.hidden = true;
+      
+      // Clear previous results
+      while (resultsList.firstChild) {
+        resultsList.removeChild(resultsList.firstChild);
+      }
+      
+      // Update count
+      resultsCount.textContent = `Found ${results.length} similar papers`;
+      resultsCount.hidden = false;
+      
+      // Add results
+      results.forEach((result, index) => {
+        const item = document.createXULElement('richlistitem');
+        item.setAttribute('class', 'search-result-item');
+        item.setAttribute('data-item-id', result.itemId);
+        item.setAttribute('data-index', index);
+        
+        // Create layout
+        const vbox = document.createXULElement('vbox');
+        vbox.setAttribute('flex', '1');
+        
+        // Title and similarity
+        const titleBox = document.createXULElement('hbox');
+        titleBox.setAttribute('align', 'center');
+        
+        const title = document.createXULElement('label');
+        title.setAttribute('class', 'result-title');
+        title.setAttribute('value', result.title || 'Untitled');
+        title.setAttribute('flex', '1');
+        title.setAttribute('crop', 'end');
+        titleBox.appendChild(title);
+        
+        const similarity = document.createXULElement('label');
+        similarity.setAttribute('class', 'result-similarity');
+        similarity.setAttribute('value', `${Math.round(result.similarity * 100)}%`);
+        similarity.style.color = getSimilarityColor(result.similarity);
+        titleBox.appendChild(similarity);
+        
+        vbox.appendChild(titleBox);
+        
+        // Creators
+        if (result.creators && result.creators.length > 0) {
+          const creators = document.createXULElement('label');
+          creators.setAttribute('class', 'result-creators');
+          creators.setAttribute('value', result.creators.join(', '));
+          creators.setAttribute('crop', 'end');
+          vbox.appendChild(creators);
+        }
+        
+        // Year
+        if (result.year) {
+          const year = document.createXULElement('label');
+          year.setAttribute('class', 'result-year');
+          year.setAttribute('value', result.year);
+          vbox.appendChild(year);
+        }
+        
+        item.appendChild(vbox);
+        resultsList.appendChild(item);
+      });
+    }
+
+    function getSimilarityColor(similarity) {
+      if (similarity >= 0.8) return '#10b981'; // green
+      if (similarity >= 0.6) return '#f59e0b'; // amber
+      return '#6b7280'; // gray
+    }
+
+    function openSelectedItem() {
+      const resultsList = document.getElementById('results-list');
+      const selected = resultsList.selectedItem;
+      
+      if (selected) {
+        const itemId = parseInt(selected.getAttribute('data-item-id'));
+        openItemCallback(itemId);
+      }
+    }
+
+    function showProgress(message) {
+      const progressBox = document.getElementById('progress-box');
+      const progressLabel = document.getElementById('progress-label');
+      const resultsCount = document.getElementById('results-count');
+      
+      progressLabel.value = message;
+      progressBox.hidden = false;
+      resultsCount.hidden = true;
+    }
+
+    function showError(message) {
+      const progressBox = document.getElementById('progress-box');
+      const resultsCount = document.getElementById('results-count');
+      
+      progressBox.hidden = true;
+      resultsCount.textContent = message;
+      resultsCount.hidden = false;
+      resultsCount.style.color = '#ef4444';
+    }
+
+    // Expose functions to window object for external calls
+    window.showProgress = showProgress;
+    window.displayResults = displayResults;
+    window.showError = showError;
+  ]]>
+  </script>
+
+  <vbox flex="1">
+    <!-- Search input area -->
+    <hbox id="search-area" align="center" style="padding: 10px;">
+      <label value="Search query:" style="min-width: 100px;" />
+      <html:input id="search-box" 
+                  type="text" 
+                  placeholder="Enter your semantic search query..."
+                  style="flex: 1; padding: 5px; font-size: 14px;" />
+      <button id="search-button" label="Search" style="margin-left: 10px;" />
+    </hbox>
+    
+    <separator />
+    
+    <!-- Progress indicator -->
+    <hbox id="progress-box" align="center" hidden="true" style="padding: 10px;">
+      <html:progress style="width: 30px;" />
+      <label id="progress-label" value="Searching..." style="margin-left: 10px;" />
+    </hbox>
+    
+    <!-- Results count -->
+    <label id="results-count" hidden="true" style="padding: 10px; font-weight: bold;" />
+    
+    <!-- Results list -->
+    <richlistbox id="results-list" flex="1" style="overflow-y: auto;" />
+    
+    <!-- Bottom buttons -->
+    <hbox style="padding: 10px;" align="center" pack="end">
+      <button label="Open Selected" oncommand="openSelectedItem();" />
+      <button label="Close" oncommand="window.close();" />
+    </hbox>
+  </vbox>
+</window>

@@ -1,0 +1,18 @@
+{
+  "id": "generic",
+  "name": "Generic Zotero Notes",
+  "version": "1.0.0",
+  "selector": { "mode": "all", "patterns": [] },
+  "title": { "stripPrefixes": [] },
+  "evidenceTags": {},
+  "sections": {
+    "conclusion": ["conclusion", "summary", "key findings", "结论", "总结"],
+    "question": ["research question", "open question", "科学问题", "研究问题"],
+    "method": ["method", "methodology", "experimental design", "方法", "实验设计"],
+    "limitation": ["limitation", "caveat", "bias", "局限", "不足"],
+    "background": ["background", "introduction", "背景", "引言"],
+    "figure": ["figure", "fig.", "图表"],
+    "reference": ["reference", "bibliography", "参考文献"]
+  },
+  "duplicatePolicy": { "enabled": false, "styles": {}, "preferred": null }
+}

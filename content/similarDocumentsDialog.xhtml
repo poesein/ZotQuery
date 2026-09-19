@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero-react-client.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotseek/content/searchDialog.css" type="text/css"?>
+<!DOCTYPE window>
+<window
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  title="Find Similar Documents"
+  data-l10n-id="zotseek-similar-title"
+ 
+  width="900"
+  height="600"
+  persist="width,height,screenX,screenY">
+
+  <linkset>
+    <html:link rel="localization" href="zotseek.ftl"/>
+  </linkset>
+
+  <!-- Include Zotero's scripts first to make Zotero available -->
+  <script src="chrome://zotero/content/include.js"></script>
+  <script src="chrome://zotero/content/customElements.js"></script>
+
+  <!-- Load the dialog script bundle -->
+  <script type="application/javascript" src="chrome://zotseek/content/scripts/similar-documents-dialog.js"/>
+
+  <vbox flex="1" style="padding: 10px;">
+    <!-- Source Document Info -->
+    <hbox align="center" style="margin-bottom: 10px;">
+      <label id="similar-documents-source-text" value="Similar to: " style="font-weight: bold; color: #333;"/>
+    </hbox>
+
+    <separator class="thin"/>
+
+    <!-- Status -->
+    <hbox id="similar-documents-status" align="center" style="min-height: 24px; margin: 5px 0;">
+      <label id="similar-documents-status-text" value="Loading..." style="color: #666;"/>
+    </hbox>
+
+    <separator class="thin"/>
+
+    <!-- Results Table Container - vbox provides XUL flex, CSS handles sizing/scrolling -->
+    <vbox class="virtualized-table-container" flex="1" style="min-height: 150px;">
+      <html:div id="similar-documents-results-container" />
+    </vbox>
+
+    <separator class="thin"/>
+
+    <!-- Footer Buttons -->
+    <hbox pack="end" style="margin-top: 10px;">
+      <button id="similar-documents-save-collection-btn" label="Save Results as Collection" disabled="true" style="margin-right: 5px;" data-l10n-id="zotseek-export-saveAsCollection"/>
+      <button id="similar-documents-open-btn" label="Open Selected" disabled="true" style="margin-right: 5px;" data-l10n-id="zotseek-similar-openSelected"/>
+      <button id="similar-documents-close-btn" label="Close" data-l10n-id="zotseek-similar-close"/>
+    </hbox>
+  </vbox>
+
+</window>

@@ -1,0 +1,23 @@
+{
+  "product": "ZotQuery",
+  "version": "3.0.11",
+  "upstream": "ZotSeek 1.21.2",
+  "upstream_sha256": "7daaf964b1f11da274f201a1671dc82560add264f4b56f0b602c31b067ce2e69",
+  "plugin_id": "zotseek@zotero.org",
+  "zotero": "10.0.*",
+  "research_engine": "content/scripts/research-engine.js",
+  "query_contract": "v2",
+  "coverage_gate": "v2",
+  "mcpAuth": "loopback-bearer-required",
+  "directFactValidation": "verbatim-bounded-value-plus-affirmative-review",
+  "conflictResolution": "independent-pdf-position-and-quote",
+  "mcp_tools": 43,
+  "domain_core": "generic-no-research-direction-presets",
+  "bundled_note_profiles": ["generic", "strawberry-vnext"],
+  "identifier_policy": "order-significant; no automatic ASCII-degradation aliases",
+  "lneNative": true,
+  "lneNativeMilestone": "stable-native-unified-research",
+  "embeddingContract": "one active ZotQuery Search model shared by PDF chunks and Note segments",
+  "legacyLNEFallback": false,
+  "persistentLNESurveys": true
+}

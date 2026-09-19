@@ -1,0 +1,16 @@
+# Local build products and personal Zotero state must never enter source history.
+*.xpi
+*.zip
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+*.bak
+.env
+.env.*
+node_modules/
+zotero-profile/
+user-data/
+dist/
+build/

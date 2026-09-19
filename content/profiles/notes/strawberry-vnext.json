@@ -1,0 +1,30 @@
+{
+  "id": "strawberry-vnext",
+  "name": "🍓精读笔记 vNext",
+  "version": "1.0.0",
+  "selector": { "mode": "title-or-content", "patterns": ["精读笔记"] },
+  "title": { "stripPrefixes": ["🍓精读笔记｜", "🍓 精读笔记｜", "🍓精读笔记 📍", "🍓 精读笔记 📍", "精读笔记｜", "精读笔记 📍"] },
+  "evidenceTags": {
+    "实验支持": { "role": "OBSERVED_EVIDENCE", "baseWeight": 0.45, "evidenceWeight": 0.90 },
+    "作者陈述": { "role": "AUTHOR_CLAIM", "baseWeight": 0.30, "conclusionWeight": 0.70 },
+    "作者解释": { "role": "AUTHOR_INTERPRETATION", "baseWeight": 0.12 },
+    "综合推断": { "role": "USER_INFERENCE", "baseWeight": -0.10, "evidenceWeight": -0.30 },
+    "我的判断": { "role": "USER_INFERENCE", "baseWeight": 0 },
+    "证据强度": { "role": "EVIDENCE_QUALITY", "baseWeight": 0.10 },
+    "背景知识": { "role": "BACKGROUND", "baseWeight": 0 },
+    "反方观点": { "role": "AUTHOR_INTERPRETATION", "baseWeight": 0 },
+    "作者观点": { "role": "AUTHOR_INTERPRETATION", "baseWeight": 0.05 },
+    "综合结论": { "role": "USER_INFERENCE", "baseWeight": 0 }
+  },
+  "sections": {
+    "conclusion": ["一句话", "核心结论", "总体结论", "最终总结", "主要结论", "结论"],
+    "question": ["核心科学问题", "科学问题", "研究问题", "核心问题", "待解决", "尚未解决"],
+    "method": ["实验设计", "方法与体系", "实验方法", "技术路线", "体系"],
+    "limitation": ["局限", "不足", "证据质量", "证据强度", "保留意见", "批判"],
+    "background": ["背景", "概念", "前提", "基础知识"],
+    "figure": ["图表", "figure", "fig.", "图"],
+    "reference": ["参考文献", "关键原创研究"],
+    "project": ["课题", "综合推断", "后续研究"]
+  },
+  "duplicatePolicy": { "enabled": true, "styles": { "bar": "精读笔记｜", "pin": "精读笔记 📍" }, "preferred": "bar" }
+}

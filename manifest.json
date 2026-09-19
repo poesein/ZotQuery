@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "ZotQuery",
+  "version": "3.0.11",
+  "description": "ZotQuery: unified PDF and Note search, evidence scanning, persistent surveys, and research MCP tools.",
+  "author": "José Fernandes; ZotQuery integration",
+  "homepage_url": "https://github.com/poesein/ZotQuery",
+  "icons": {
+    "48": "content/icons/favicon@0.5x.png",
+    "96": "content/icons/favicon.png"
+  },
+  "applications": {
+    "zotero": {
+      "id": "zotseek@zotero.org",
+      "update_url": "https://raw.githubusercontent.com/poesein/ZotQuery/main/updates.json",
+      "strict_min_version": "10.0",
+      "strict_max_version": "10.0.*"
+    }
+  }
+}
