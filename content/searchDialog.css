@@ -1,6 +1,6 @@
 /* ZotQuery Dialog Styles */
 
-#zotseek-dialog {
+#zotquery-dialog {
   min-width: 600px;
   min-height: 400px;
 }
@@ -104,18 +104,18 @@
 }
 
 /* VirtualizedTable Styles */
-#zotseek-results-container {
+#zotquery-results-container {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 13px;
 }
 
-#zotseek-results-container .virtualized-table {
+#zotquery-results-container .virtualized-table {
   height: 100%;
   width: 100%;
 }
 
 /* Only apply border to the actual header element, not its children */
-#zotseek-results-container .tree-header,
+#zotquery-results-container .tree-header,
 #similar-documents-results-container .tree-header {
   background: #f5f5f5;
   border-bottom: 1px solid #ddd !important;
@@ -132,26 +132,26 @@
 }
 
 /* Ensure no borders on child elements */
-#zotseek-results-container .tree-header * {
+#zotquery-results-container .tree-header * {
   border: none !important;
 }
 
-#zotseek-results-container .virtualized-table-header .row,
-#zotseek-results-container thead .row {
+#zotquery-results-container .virtualized-table-header .row,
+#zotquery-results-container thead .row {
   font-weight: 600;
   background: transparent;
   border: none !important;
   padding: 8px 12px;
 }
 
-#zotseek-results-container .virtualized-table-header .cell,
-#zotseek-results-container thead .cell {
+#zotquery-results-container .virtualized-table-header .cell,
+#zotquery-results-container thead .cell {
   font-weight: 600;
   color: #424242;
 }
 
-#zotseek-results-container .tree-children .row,
-#zotseek-results-container .row:not(.tree-header .row) {
+#zotquery-results-container .tree-children .row,
+#zotquery-results-container .row:not(.tree-header .row) {
   display: flex;
   align-items: center;
   min-height: 28px;
@@ -163,23 +163,23 @@
   position: relative;
 }
 
-#zotseek-results-container .row:hover {
+#zotquery-results-container .row:hover {
   background: #f0f8ff !important;
   z-index: 1;
 }
 
-#zotseek-results-container .row.selected {
+#zotquery-results-container .row.selected {
   background: #d1e7fd !important;
   border-bottom-color: #b8d4f0 !important;  /* Match selection color for seamless look */
 }
 
-#zotseek-results-container .row.focused {
+#zotquery-results-container .row.focused {
   outline: 2px solid #2196F3;
   outline-offset: -2px;
   z-index: 2;
 }
 
-#zotseek-results-container .cell {
+#zotquery-results-container .cell {
   padding: 0 8px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,37 +187,37 @@
 }
 
 /* Column-specific styles */
-#zotseek-results-container .cell[data-key="similarity"],
-#zotseek-results-container [data-key="similarity"] {
+#zotquery-results-container .cell[data-key="similarity"],
+#zotquery-results-container [data-key="similarity"] {
   font-weight: 600;
   color: #1976D2;
 }
 
-#zotseek-results-container .cell[data-key="title"],
-#zotseek-results-container [data-key="title"] {
+#zotquery-results-container .cell[data-key="title"],
+#zotquery-results-container [data-key="title"] {
   font-weight: 500;
   color: #212121;
 }
 
-#zotseek-results-container .cell[data-key="authors"],
-#zotseek-results-container [data-key="authors"] {
+#zotquery-results-container .cell[data-key="authors"],
+#zotquery-results-container [data-key="authors"] {
   color: #616161;
 }
 
-#zotseek-results-container .cell[data-key="year"],
-#zotseek-results-container [data-key="year"] {
+#zotquery-results-container .cell[data-key="year"],
+#zotquery-results-container [data-key="year"] {
   color: #757575;
   text-align: center;
 }
 
-#zotseek-results-container .cell[data-key="source"],
-#zotseek-results-container [data-key="source"] {
+#zotquery-results-container .cell[data-key="source"],
+#zotquery-results-container [data-key="source"] {
   color: #9E9E9E;
   font-size: 12px;
 }
 
 /* Virtualized table body - let parent container handle scrolling */
-#zotseek-results-container .virtualized-table-body,
+#zotquery-results-container .virtualized-table-body,
 #similar-documents-results-container .virtualized-table-body {
   flex: 1 0;
   max-width: 100%;
@@ -225,7 +225,7 @@
 }
 
 /* VirtualizedTable React component fills container and uses flex layout */
-#zotseek-results-container .virtualized-table,
+#zotquery-results-container .virtualized-table,
 #similar-documents-results-container .virtualized-table {
   display: flex;
   flex-direction: column;
@@ -236,7 +236,7 @@
 }
 
 /* Tree view container - CRITICAL: bounded height for scrolling to work */
-#zotseek-results-container .tree-view,
+#zotquery-results-container .tree-view,
 #similar-documents-results-container .tree-view {
   display: flex !important;
   flex-direction: column !important;
@@ -248,7 +248,7 @@
 }
 
 /* Tree children - this is where scrolling actually happens */
-#zotseek-results-container .tree-children,
+#zotquery-results-container .tree-children,
 #similar-documents-results-container .tree-children {
   flex: 1 1 auto;
   min-height: 0;
@@ -257,7 +257,7 @@
   overflow-x: hidden;
 }
 
-#zotseek-results-container tr {
+#zotquery-results-container tr {
   display: flex;
   width: 100%;
   align-items: center;
@@ -265,8 +265,8 @@
   height: 28px;
 }
 
-#zotseek-results-container td,
-#zotseek-results-container .cell {
+#zotquery-results-container td,
+#zotquery-results-container .cell {
   padding: 2px 8px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -302,7 +302,7 @@
 }
 
 /* Results container uses absolute positioning to get bounded height in XUL */
-#zotseek-results-container,
+#zotquery-results-container,
 #similar-documents-results-container {
   /* CRITICAL: Absolute positioning creates bounded dimensions from parent */
   position: absolute;
@@ -315,7 +315,7 @@
 }
 
 /* The VirtualizedTable React component - ensure it fills the container */
-#zotseek-results-container > div,
+#zotquery-results-container > div,
 #similar-documents-results-container > div {
   width: 100%;
   height: 100%;
@@ -324,52 +324,52 @@
 }
 
 /* Fix virtualized table row heights */
-#zotseek-results-container .virtualized-table .row,
-#zotseek-results-container [role="treeitem"] {
+#zotquery-results-container .virtualized-table .row,
+#zotquery-results-container [role="treeitem"] {
   min-height: 28px !important;
   height: 28px !important;
   box-sizing: border-box;
 }
 
 /* Remove double border between header and first row */
-#zotseek-results-container .virtualized-table .row:first-child,
-#zotseek-results-container [role="treeitem"]:first-child,
-#zotseek-results-container tbody tr:first-child,
-#zotseek-results-container .tree-children > :first-child {
+#zotquery-results-container .virtualized-table .row:first-child,
+#zotquery-results-container [role="treeitem"]:first-child,
+#zotquery-results-container tbody tr:first-child,
+#zotquery-results-container .tree-children > :first-child {
   border-top: none !important;
 }
 
 /* Also ensure no top border on first data row */
-#zotseek-results-container .tree-children .row:first-of-type {
+#zotquery-results-container .tree-children .row:first-of-type {
   border-top: none !important;
 }
 
 
 /* Ensure hover states work on all row elements */
-#zotseek-results-container .virtualized-table .row:hover,
-#zotseek-results-container [role="treeitem"]:hover,
-#zotseek-results-container tr:hover {
+#zotquery-results-container .virtualized-table .row:hover,
+#zotquery-results-container [role="treeitem"]:hover,
+#zotquery-results-container tr:hover {
   background: #f0f8ff !important;
 }
 
 /* Selected state for all row types */
-#zotseek-results-container .virtualized-table .row.selected,
-#zotseek-results-container [role="treeitem"][aria-selected="true"],
-#zotseek-results-container tr.selected {
+#zotquery-results-container .virtualized-table .row.selected,
+#zotquery-results-container [role="treeitem"][aria-selected="true"],
+#zotquery-results-container tr.selected {
   background: #d1e7fd !important;
   border-bottom-color: #b8d4f0 !important;  /* Match selection color for seamless look */
 }
 
 /* Text color on selected rows - ensure good contrast */
-#zotseek-results-container .row.selected .cell,
-#zotseek-results-container [role="treeitem"][aria-selected="true"] .cell,
-#zotseek-results-container tr.selected .cell {
+#zotquery-results-container .row.selected .cell,
+#zotquery-results-container [role="treeitem"][aria-selected="true"] .cell,
+#zotquery-results-container tr.selected .cell {
   color: #1a1a1a !important;
 }
 
 /* Keep similarity column distinctive but readable */
-#zotseek-results-container .row.selected .cell[data-key="similarity"],
-#zotseek-results-container .row.selected [data-key="similarity"] {
+#zotquery-results-container .row.selected .cell[data-key="similarity"],
+#zotquery-results-container .row.selected [data-key="similarity"] {
   color: #0d47a1 !important;
 }
 
@@ -388,7 +388,7 @@
   margin-right: 8px;
 }
 
-.zotseek-query-input {
+.zotquery-query-input {
   flex: 1;
   padding: 6px;
   font-size: 14px;
@@ -411,11 +411,11 @@
   padding: 4px 8px;
 }
 
-#zotseek-add-query-btn:hover {
+#zotquery-add-query-btn:hover {
   background: #e8f5e9;
 }
 
-#zotseek-remove-query-2-btn:hover {
+#zotquery-remove-query-2-btn:hover {
   background: #ffebee;
 }
 
@@ -437,8 +437,8 @@
 }
 
 /* Source Indicator Column */
-#zotseek-results-container .cell[data-key="indicator"],
-#zotseek-results-container [data-key="indicator"] {
+#zotquery-results-container .cell[data-key="indicator"],
+#zotquery-results-container [data-key="indicator"] {
   font-size: 14px;
   text-align: center;
   padding: 0 4px;
@@ -446,25 +446,25 @@
 }
 
 /* Source indicator tooltips */
-#zotseek-results-container .cell[data-key="indicator"][title] {
+#zotquery-results-container .cell[data-key="indicator"][title] {
   cursor: help;
 }
 
 /* Highlight rows found by both searches */
-#zotseek-results-container .row[data-source="both"] {
+#zotquery-results-container .row[data-source="both"] {
   background: rgba(76, 175, 80, 0.08);
 }
 
-#zotseek-results-container .row[data-source="both"]:hover {
+#zotquery-results-container .row[data-source="both"]:hover {
   background: rgba(76, 175, 80, 0.15) !important;
 }
 
-#zotseek-results-container .row[data-source="both"].selected {
+#zotquery-results-container .row[data-source="both"].selected {
   background: rgba(76, 175, 80, 0.25) !important;
 }
 
 /* Column Header Sorting Styles */
-#zotseek-results-container .tree-header .cell,
+#zotquery-results-container .tree-header .cell,
 #similar-documents-results-container .tree-header .cell {
   cursor: pointer;
   user-select: none;
@@ -473,19 +473,19 @@
 }
 
 /* Non-sortable columns */
-#zotseek-results-container .tree-header .cell[data-key="indicator"],
-#zotseek-results-container .tree-header .cell[data-key="page"] {
+#zotquery-results-container .tree-header .cell[data-key="indicator"],
+#zotquery-results-container .tree-header .cell[data-key="page"] {
   cursor: default;
 }
 
 /* Sortable column hover effect */
-#zotseek-results-container .tree-header .cell:hover:not([data-key="indicator"]):not([data-key="page"]),
+#zotquery-results-container .tree-header .cell:hover:not([data-key="indicator"]):not([data-key="page"]),
 #similar-documents-results-container .tree-header .cell:hover:not([data-key="indicator"]):not([data-key="page"]) {
   background: rgba(0, 0, 0, 0.05);
 }
 
 /* Sort direction indicator (arrow) - shown via CSS ::after */
-#zotseek-results-container .tree-header .cell.sorted-ascending::after,
+#zotquery-results-container .tree-header .cell.sorted-ascending::after,
 #similar-documents-results-container .tree-header .cell.sorted-ascending::after {
   content: '▲';
   position: absolute;
@@ -496,7 +496,7 @@
   color: #1976D2;
 }
 
-#zotseek-results-container .tree-header .cell.sorted-descending::after,
+#zotquery-results-container .tree-header .cell.sorted-descending::after,
 #similar-documents-results-container .tree-header .cell.sorted-descending::after {
   content: '▼';
   position: absolute;
@@ -522,45 +522,45 @@
     background: var(--material-button-hover);
   }
   
-  #zotseek-results-container .virtualized-table-header {
+  #zotquery-results-container .virtualized-table-header {
     background: #2a2a2a;
     border-bottom-color: #444;
   }
   
-  #zotseek-results-container .row {
+  #zotquery-results-container .row {
     border-bottom-color: #333;
   }
   
-  #zotseek-results-container .row:hover,
-  #zotseek-results-container .virtualized-table .row:hover,
-  #zotseek-results-container [role="treeitem"]:hover {
+  #zotquery-results-container .row:hover,
+  #zotquery-results-container .virtualized-table .row:hover,
+  #zotquery-results-container [role="treeitem"]:hover {
     background: #3a3a3a !important;
   }
   
-  #zotseek-results-container .row.selected,
-  #zotseek-results-container .virtualized-table .row.selected,
-  #zotseek-results-container [role="treeitem"][aria-selected="true"] {
+  #zotquery-results-container .row.selected,
+  #zotquery-results-container .virtualized-table .row.selected,
+  #zotquery-results-container [role="treeitem"][aria-selected="true"] {
     background: #1e3a5f !important;
     border-bottom-color: #2a4a6f !important;  /* Match selection color for seamless look */
   }
 
   /* Dark mode: Text color on selected rows */
-  #zotseek-results-container .row.selected .cell,
-  #zotseek-results-container [role="treeitem"][aria-selected="true"] .cell {
+  #zotquery-results-container .row.selected .cell,
+  #zotquery-results-container [role="treeitem"][aria-selected="true"] .cell {
     color: #ffffff !important;
   }
 
   /* Dark mode: Keep similarity column readable on selection */
-  #zotseek-results-container .row.selected .cell[data-key="similarity"],
-  #zotseek-results-container .row.selected [data-key="similarity"] {
+  #zotquery-results-container .row.selected .cell[data-key="similarity"],
+  #zotquery-results-container .row.selected [data-key="similarity"] {
     color: #90caf9 !important;
   }
   
-  #zotseek-results-container .cell[data-key="title"] {
+  #zotquery-results-container .cell[data-key="title"] {
     color: #e0e0e0;
   }
   
-  #zotseek-results-container .cell[data-key="authors"] {
+  #zotquery-results-container .cell[data-key="authors"] {
     color: #b0b0b0;
   }
   
@@ -576,34 +576,34 @@
   }
   
   /* Dark mode: Highlight rows found by both searches */
-  #zotseek-results-container .row[data-source="both"] {
+  #zotquery-results-container .row[data-source="both"] {
     background: rgba(76, 175, 80, 0.12);
   }
   
-  #zotseek-results-container .row[data-source="both"]:hover {
+  #zotquery-results-container .row[data-source="both"]:hover {
     background: rgba(76, 175, 80, 0.2) !important;
   }
   
-  #zotseek-results-container .row[data-source="both"].selected {
+  #zotquery-results-container .row[data-source="both"].selected {
     background: rgba(76, 175, 80, 0.3) !important;
   }
 
   /* Dark mode: Sortable column hover */
-  #zotseek-results-container .tree-header .cell:hover:not([data-key="indicator"]):not([data-key="page"]),
+  #zotquery-results-container .tree-header .cell:hover:not([data-key="indicator"]):not([data-key="page"]),
   #similar-documents-results-container .tree-header .cell:hover:not([data-key="indicator"]):not([data-key="page"]) {
     background: rgba(255, 255, 255, 0.08);
   }
 
   /* Dark mode: Sort indicator color */
-  #zotseek-results-container .tree-header .cell.sorted-ascending::after,
-  #zotseek-results-container .tree-header .cell.sorted-descending::after,
+  #zotquery-results-container .tree-header .cell.sorted-ascending::after,
+  #zotquery-results-container .tree-header .cell.sorted-descending::after,
   #similar-documents-results-container .tree-header .cell.sorted-ascending::after,
   #similar-documents-results-container .tree-header .cell.sorted-descending::after {
     color: #64B5F6;
   }
 
   /* Dark mode: Multi-query styles */
-  .zotseek-query-input {
+  .zotquery-query-input {
     background: var(--material-background, #2a2a2a);
     border-color: #444;
     color: #e0e0e0;
@@ -613,11 +613,11 @@
     color: #888;
   }
 
-  #zotseek-add-query-btn:hover {
+  #zotquery-add-query-btn:hover {
     background: rgba(76, 175, 80, 0.2);
   }
 
-  #zotseek-remove-query-2-btn:hover {
+  #zotquery-remove-query-2-btn:hover {
     background: rgba(244, 67, 54, 0.2);
   }
 }
@@ -625,7 +625,7 @@
 /* ---------------------------------------------------------------------------
    Snippet hover tooltip (issue #36): shows the matched chunk text on row hover
    --------------------------------------------------------------------------- */
-.zotseek-snippet-tooltip {
+.zotquery-snippet-tooltip {
   position: fixed;
   z-index: 9999;
   max-width: 380px;
@@ -644,29 +644,29 @@
   transition: opacity 0.09s ease, transform 0.09s ease;
 }
 
-.zotseek-snippet-tooltip.show {
+.zotquery-snippet-tooltip.show {
   opacity: 1;
   transform: translateY(0);
 }
 
-.zotseek-snippet-tooltip .zotseek-snippet-meta {
+.zotquery-snippet-tooltip .zotquery-snippet-meta {
   margin-bottom: 5px;
   font-size: 11px;
   color: var(--fill-secondary, #6b7280);
   white-space: nowrap;
 }
 
-.zotseek-snippet-tooltip .zotseek-snippet-meta .sep {
+.zotquery-snippet-tooltip .zotquery-snippet-meta .sep {
   margin: 0 6px;
   opacity: 0.6;
 }
 
-.zotseek-snippet-tooltip .zotseek-snippet-body {
+.zotquery-snippet-tooltip .zotquery-snippet-body {
   border-left: 3px solid var(--color-accent, #2f6fed);
   padding-left: 9px;
 }
 
-.zotseek-snippet-tooltip mark {
+.zotquery-snippet-tooltip mark {
   background: #fff3bf;
   color: #7a5c00;
   border-radius: 2px;
@@ -674,18 +674,18 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .zotseek-snippet-tooltip {
+  .zotquery-snippet-tooltip {
     border-color: #3a3d42;
     background: var(--material-toolbar, #2a2c30);
     color: #e6e6e6;
     box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
   }
 
-  .zotseek-snippet-tooltip .zotseek-snippet-meta {
+  .zotquery-snippet-tooltip .zotquery-snippet-meta {
     color: #9aa0a6;
   }
 
-  .zotseek-snippet-tooltip mark {
+  .zotquery-snippet-tooltip mark {
     background: #5a4a12;
     color: #ffe48a;
   }

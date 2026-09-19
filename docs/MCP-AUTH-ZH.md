@@ -1,4 +1,4 @@
-# ZotQuery 本地 MCP 令牌（3.0.11 候选版）
+# ZotQuery 本地 MCP 令牌（3.0.12 候选版）
 
 本版所有 `/zotquery/*` HTTP 接口（包括 `/health` 和 MCP 初始化）都需要 `Authorization: Bearer <token>`。无令牌返回 HTTP 401。旧客户端若只配置 URL，升级后将暂时无法连接；这不是 Research Engine 故障。
 

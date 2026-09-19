@@ -1,4 +1,4 @@
-/* ZotQuery Evidence 3.0.11
+/* ZotQuery Evidence 3.0.12
  * Evidence Engine layered on the Search component.
  * Keeps normal search/indexing intact while adding exhaustive lexical
  * passage enumeration, semantic-union retrieval, adaptive context, LNE bridge,
@@ -7,10 +7,10 @@
 "use strict";
 
 (() => {
-  const VERSION = "3.0.11";
-  const DB = "zotseek";
-  const RDB = "zotseekresearch";
-  const RFILE = "zotseek-research.sqlite";
+  const VERSION = "3.0.12";
+  const DB = "zotquery";
+  const RDB = "zotqueryresearch";
+  const RFILE = "zotquery-research.sqlite";
   const PREFIX = "[ZotQuery Evidence]";
   const ENDPOINTS = [
     "/zotquery/health",
@@ -29,7 +29,7 @@
     "/zotquery/mcp",
   ];
   let started = false;
-  const AUTH_PREF = "zotseek.research.authToken";
+  const AUTH_PREF = "zotquery.research.authToken";
   let authToken = null;
 
   const log = (...x) => Zotero.debug(`${PREFIX} ${x.map(v => typeof v === "string" ? v : JSON.stringify(v)).join(" ")}`);
@@ -230,9 +230,9 @@
   }
 
   async function countEligiblePapers() {
-    const scope = String(Zotero.Prefs.get("zotseek.indexScope", true) || "user");
-    const excludeBooks = Zotero.Prefs.get("zotseek.excludeBooks", true) !== false;
-    const excludeTag = String(Zotero.Prefs.get("zotseek.excludeTag", true) || "zotseek-exclude");
+    const scope = String(Zotero.Prefs.get("zotquery.indexScope", true) || "user");
+    const excludeBooks = Zotero.Prefs.get("zotquery.excludeBooks", true) !== false;
+    const excludeTag = String(Zotero.Prefs.get("zotquery.excludeTag", true) || "zotquery-exclude");
     const libraries = scope === "all"
       ? (Zotero.Libraries.getAll?.() || []).filter(l => l.libraryType !== "feed")
       : [Zotero.Libraries.get(Zotero.Libraries.userLibraryID)];
@@ -1015,7 +1015,7 @@
   async function callTool(name,a){
     name=internalToolName(name);
     if(name==="research_result")return researchResult(a.sessionId,a);
-    if(name==="research_render")return Zotero.ZotQueryOutputProfiles.render(await researchResult(a.sessionId,a),a.profileId||Zotero.Prefs.get("zotseek.outputProfile",true)||"standard");
+    if(name==="research_render")return Zotero.ZotQueryOutputProfiles.render(await researchResult(a.sessionId,a),a.profileId||Zotero.Prefs.get("zotquery.outputProfile",true)||"standard");
     if(name==="note_profile_list")return {activeProfile:Zotero.ZotQueryNoteProfiles.active(),profiles:Zotero.ZotQueryNoteProfiles.list()};
     if(name==="note_profile_validate")return Zotero.ZotQueryNoteProfiles.validate(a.profile);
     if(name==="note_profile_draft")return Zotero.ZotQueryNoteProfiles.draftFromTemplate(a.template);

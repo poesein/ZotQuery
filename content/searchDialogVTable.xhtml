@@ -3,7 +3,7 @@
 <?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
 <?xml-stylesheet href="chrome://zotero-platform/content/zotero-react-client.css" type="text/css"?>
 <?xml-stylesheet href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
-<?xml-stylesheet href="chrome://zotseek/content/searchDialog.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotquery/content/searchDialog.css" type="text/css"?>
 <!DOCTYPE window>
 <window
   xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
@@ -14,7 +14,7 @@
   persist="width,height,screenX,screenY">
 
   <linkset>
-    <html:link rel="localization" href="zotseek.ftl"/>
+    <html:link rel="localization" href="zotquery.ftl"/>
   </linkset>
 
   <!-- Include Zotero's scripts first to make Zotero available -->
@@ -22,24 +22,24 @@
   <script src="chrome://zotero/content/customElements.js"></script>
 
   <!-- Load the dialog script bundle -->
-  <script type="application/javascript" src="chrome://zotseek/content/scripts/search-dialog-vtable.js"/>
+  <script type="application/javascript" src="chrome://zotquery/content/scripts/search-dialog-vtable.js"/>
 
   <vbox flex="1" style="padding: 10px;">
     <!-- Search Queries Container -->
     <vbox id="search-queries-container">
       <!-- Query 1 (always visible) -->
       <hbox id="query-row-1" class="query-row" align="center" style="margin-bottom: 4px;">
-        <label value="Search:" class="query-label" data-l10n-id="zotseek-search-search"/>
+        <label value="Search:" class="query-label" data-l10n-id="zotquery-search-search"/>
         <html:input
-          id="zotseek-query-1"
-          class="zotseek-query-input"
+          id="zotquery-query-1"
+          class="zotquery-query-input"
           type="text"
           placeholder="Enter your search query (auto-searches as you type)..."
-          data-l10n-id="zotseek-search-placeholder"
+          data-l10n-id="zotquery-search-placeholder"
          
         />
-        <button id="zotseek-add-query-btn" label="+" tooltiptext="Add another query for AND/OR combination" class="query-action-btn" data-l10n-id="zotseek-search-addQuery"/>
-        <button id="zotseek-btn" label="Search" data-l10n-id="zotseek-search-searchBtn" style="margin-left: 8px;"/>
+        <button id="zotquery-add-query-btn" label="+" tooltiptext="Add another query for AND/OR combination" class="query-action-btn" data-l10n-id="zotquery-search-addQuery"/>
+        <button id="zotquery-btn" label="Search" data-l10n-id="zotquery-search-searchBtn" style="margin-left: 8px;"/>
       </hbox>
 
       <!-- Operator row (hidden by default, shown when 2+ queries) -->
@@ -47,62 +47,62 @@
         <label value="" class="query-label"/>
         <menulist id="query-combine-operator" style="min-width: 70px;">
           <menupopup>
-            <menuitem value="and" label="AND" data-l10n-id="zotseek-search-and"/>
-            <menuitem value="or" label="OR" data-l10n-id="zotseek-search-or"/>
+            <menuitem value="and" label="AND" data-l10n-id="zotquery-search-and"/>
+            <menuitem value="or" label="OR" data-l10n-id="zotquery-search-or"/>
           </menupopup>
         </menulist>
         <!-- AND formula selector (only visible when AND is selected) -->
         <hbox id="query-formula-container" align="center" style="margin-left: 8px;">
-          <label value="using" style="color: #888; font-size: 11px; margin-right: 4px;" data-l10n-id="zotseek-search-using"/>
+          <label value="using" style="color: #888; font-size: 11px; margin-right: 4px;" data-l10n-id="zotquery-search-using"/>
           <menulist id="query-and-formula" style="min-width: 90px; font-size: 11px;">
             <menupopup>
-              <menuitem value="min" label="Minimum" data-l10n-id="zotseek-search-minimum"/>
-              <menuitem value="product" label="Product" data-l10n-id="zotseek-search-product"/>
-              <menuitem value="average" label="Average" data-l10n-id="zotseek-search-average"/>
+              <menuitem value="min" label="Minimum" data-l10n-id="zotquery-search-minimum"/>
+              <menuitem value="product" label="Product" data-l10n-id="zotquery-search-product"/>
+              <menuitem value="average" label="Average" data-l10n-id="zotquery-search-average"/>
             </menupopup>
           </menulist>
         </hbox>
-        <label id="query-operator-hint" value="— results must match both queries" style="margin-left: 8px; color: #888; font-size: 11px;" data-l10n-id="zotseek-search-andDesc"/>
+        <label id="query-operator-hint" value="— results must match both queries" style="margin-left: 8px; color: #888; font-size: 11px;" data-l10n-id="zotquery-search-andDesc"/>
       </hbox>
 
       <!-- Query 2 (hidden by default) -->
       <hbox id="query-row-2" class="query-row" align="center" style="margin-bottom: 4px; display: none;">
-        <label value="Query 2:" class="query-label" style="color: #666;" data-l10n-id="zotseek-search-query2"/>
+        <label value="Query 2:" class="query-label" style="color: #666;" data-l10n-id="zotquery-search-query2"/>
         <html:input
-          id="zotseek-query-2"
-          class="zotseek-query-input"
+          id="zotquery-query-2"
+          class="zotquery-query-input"
           type="text"
           placeholder="Enter query 2..."
         />
-        <button id="zotseek-remove-query-2-btn" label="✕" tooltiptext="Remove this query" class="query-action-btn query-remove-btn" data-l10n-id="zotseek-search-removeQuery"/>
+        <button id="zotquery-remove-query-2-btn" label="✕" tooltiptext="Remove this query" class="query-action-btn query-remove-btn" data-l10n-id="zotquery-search-removeQuery"/>
         <!-- Spacer to match Search button width -->
         <button label="Search" style="margin-left: 8px; visibility: hidden;"/>
       </hbox>
 
       <!-- Query 3 (hidden by default) -->
       <hbox id="query-row-3" class="query-row" align="center" style="margin-bottom: 4px; display: none;">
-        <label value="Query 3:" class="query-label" style="color: #666;" data-l10n-id="zotseek-search-query3"/>
+        <label value="Query 3:" class="query-label" style="color: #666;" data-l10n-id="zotquery-search-query3"/>
         <html:input
-          id="zotseek-query-3"
-          class="zotseek-query-input"
+          id="zotquery-query-3"
+          class="zotquery-query-input"
           type="text"
           placeholder="Enter query 3..."
         />
-        <button id="zotseek-remove-query-3-btn" label="✕" tooltiptext="Remove this query" class="query-action-btn query-remove-btn" data-l10n-id="zotseek-search-removeQuery"/>
+        <button id="zotquery-remove-query-3-btn" label="✕" tooltiptext="Remove this query" class="query-action-btn query-remove-btn" data-l10n-id="zotquery-search-removeQuery"/>
         <!-- Spacer to match Search button width -->
         <button label="Search" style="margin-left: 8px; visibility: hidden;"/>
       </hbox>
 
       <!-- Query 4 (hidden by default) -->
       <hbox id="query-row-4" class="query-row" align="center" style="margin-bottom: 4px; display: none;">
-        <label value="Query 4:" class="query-label" style="color: #666;" data-l10n-id="zotseek-search-query4"/>
+        <label value="Query 4:" class="query-label" style="color: #666;" data-l10n-id="zotquery-search-query4"/>
         <html:input
-          id="zotseek-query-4"
-          class="zotseek-query-input"
+          id="zotquery-query-4"
+          class="zotquery-query-input"
           type="text"
           placeholder="Enter query 4..."
         />
-        <button id="zotseek-remove-query-4-btn" label="✕" tooltiptext="Remove this query" class="query-action-btn query-remove-btn" data-l10n-id="zotseek-search-removeQuery"/>
+        <button id="zotquery-remove-query-4-btn" label="✕" tooltiptext="Remove this query" class="query-action-btn query-remove-btn" data-l10n-id="zotquery-search-removeQuery"/>
         <!-- Spacer to match Search button width -->
         <button label="Search" style="margin-left: 8px; visibility: hidden;"/>
       </hbox>
@@ -110,40 +110,40 @@
     
     <!-- Search Mode Toggle -->
     <hbox id="search-mode-row" align="center" style="margin-bottom: 8px;">
-      <label value="Mode:" class="query-label" style="color: #666;" data-l10n-id="zotseek-search-mode"/>
+      <label value="Mode:" class="query-label" style="color: #666;" data-l10n-id="zotquery-search-mode"/>
       <menulist id="search-mode-select" style="min-width: 180px;">
         <menupopup>
-          <menuitem value="hybrid" label="🔗 Hybrid (Recommended)" data-l10n-id="zotseek-search-modeHybrid"/>
-          <menuitem value="semantic" label="🧠 Semantic Only" data-l10n-id="zotseek-search-modeSemantic"/>
-          <menuitem value="keyword" label="🔤 Keyword Only" data-l10n-id="zotseek-search-modeKeyword"/>
+          <menuitem value="hybrid" label="🔗 Hybrid (Recommended)" data-l10n-id="zotquery-search-modeHybrid"/>
+          <menuitem value="semantic" label="🧠 Semantic Only" data-l10n-id="zotquery-search-modeSemantic"/>
+          <menuitem value="keyword" label="🔤 Keyword Only" data-l10n-id="zotquery-search-modeKeyword"/>
         </menupopup>
       </menulist>
-      <label id="search-mode-hint" value="Match type: 🔗 both searches · 🧠 AI match · 🔤 keyword match" style="margin-left: 12px; color: #999; font-size: 11px;" data-l10n-id="zotseek-search-modeDesc"/>
+      <label id="search-mode-hint" value="Match type: 🔗 both searches · 🧠 AI match · 🔤 keyword match" style="margin-left: 12px; color: #999; font-size: 11px;" data-l10n-id="zotquery-search-modeDesc"/>
     </hbox>
 
     <!-- Results Granularity Toggle -->
     <hbox id="granularity-row" align="center" style="margin-bottom: 8px;">
-      <label value="Results:" class="query-label" style="color: #666;" data-l10n-id="zotseek-search-results"/>
+      <label value="Results:" class="query-label" style="color: #666;" data-l10n-id="zotquery-search-results"/>
       <hbox align="center" style="gap: 16px;">
         <html:label style="display: flex; align-items: center; cursor: pointer;">
           <html:input type="radio" name="granularity" id="granularity-section" value="section" checked="checked" style="margin-right: 4px;"/>
-          <html:span data-l10n-id="zotseek-search-bySection">By Section</html:span>
+          <html:span data-l10n-id="zotquery-search-bySection">By Section</html:span>
         </html:label>
         <html:label style="display: flex; align-items: center; cursor: pointer;">
           <html:input type="radio" name="granularity" id="granularity-location" value="location" style="margin-right: 4px;"/>
-          <html:span data-l10n-id="zotseek-search-byLocation">By Location (exact page &amp; paragraph)</html:span>
+          <html:span data-l10n-id="zotquery-search-byLocation">By Location (exact page &amp; paragraph)</html:span>
         </html:label>
       </hbox>
     </hbox>
 
     <!-- Status / Progress -->
-    <hbox id="zotseek-status" align="center" style="min-height: 24px; margin: 5px 0;">
-      <label id="zotseek-status-text" value="" style="color: #666;"/>
+    <hbox id="zotquery-status" align="center" style="min-height: 24px; margin: 5px 0;">
+      <label id="zotquery-status-text" value="" style="color: #666;"/>
     </hbox>
 
     <!-- Results Table Container - vbox provides XUL flex, CSS handles sizing/scrolling -->
     <vbox class="virtualized-table-container" flex="1" style="min-height: 150px;">
-      <html:div id="zotseek-results-container" />
+      <html:div id="zotquery-results-container" />
     </vbox>
 
     <separator class="thin"/>
@@ -151,12 +151,12 @@
     <!-- Footer Buttons -->
     <hbox style="margin-top: 10px;">
       <!-- Settings button on the left -->
-      <button id="zotseek-settings-btn" label="⚙ Settings" tooltiptext="Open ZotQuery preferences" data-l10n-id="zotseek-search-settings"/>
+      <button id="zotquery-settings-btn" label="⚙ Settings" tooltiptext="Open ZotQuery preferences" data-l10n-id="zotquery-search-settings"/>
       <spacer flex="1"/>
       <!-- Action buttons on the right -->
-      <button id="zotseek-save-collection-btn" label="Save Results as Collection" disabled="true" style="margin-right: 5px;" data-l10n-id="zotseek-export-saveAsCollection"/>
-      <button id="zotseek-open-btn" label="Open Selected" disabled="true" style="margin-right: 5px;" data-l10n-id="zotseek-search-openSelected"/>
-      <button id="zotseek-close-btn" label="Close" data-l10n-id="zotseek-search-close"/>
+      <button id="zotquery-save-collection-btn" label="Save Results as Collection" disabled="true" style="margin-right: 5px;" data-l10n-id="zotquery-export-saveAsCollection"/>
+      <button id="zotquery-open-btn" label="Open Selected" disabled="true" style="margin-right: 5px;" data-l10n-id="zotquery-search-openSelected"/>
+      <button id="zotquery-close-btn" label="Close" data-l10n-id="zotquery-search-close"/>
     </hbox>
   </vbox>
 

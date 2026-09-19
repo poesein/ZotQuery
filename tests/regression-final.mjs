@@ -267,7 +267,7 @@ assert(researchSource.includes("led.synthesisAllowed===true&&blockers.length===0
 assert(researchSource.includes("if(!directValueSupported(value,quote))throw"), "DIRECT insertion must bind the value to its verified quote");
 assert(researchSource.includes("resolution_position_id") && researchSource.includes("resolution_quote"), "conflict adjudication must persist PDF provenance");
 
-assert.equal(manifest.version, "3.0.11", "manifest must identify the stable release");
+assert.equal(manifest.version, "3.0.12", "manifest must identify the stable release");
 assert(nativeSource.includes('if (explicitProfile && !noteProfiles().matches'), "a fixed Note Profile must not bypass index scope");
 assert(nativeSource.includes('reason: "library-out-of-scope"'), "item notifier must honor Note library scope");
 assert(/^https:\/\//.test(manifest.applications.zotero.update_url), "Zotero requires an HTTPS update_url to accept the manifest");
@@ -281,7 +281,14 @@ for (const [file, size] of [["favicon.png", 96], ["favicon@0.5x.png", 48]]) {
   assert.equal(png.readUInt32BE(20), size, `${file} height`);
 }
 assert.equal(manifest.homepage_url, "https://github.com/poesein/ZotQuery");
-assert.equal(manifest.applications.zotero.id, "zotseek@zotero.org", "existing extension identity must preserve installed indexes and settings");
+assert.equal(manifest.applications.zotero.id, "zotquery@poesein.github.io", "ZotQuery must have its own extension identity");
+assert(prefsSource.includes('extensions.zotero.zotquery.embeddingModel'), "ZotQuery settings must use their own preference branch");
+assert(nativeSource.includes('const DB_FILE = "zotquery-lne.sqlite"'), "Note index must use its own database");
+assert(researchSource.includes('const RFILE = "zotquery-research.sqlite"'), "Research ledger must use its own database");
+assert(bootstrapSource.includes('["content", "zotquery"'), "chrome resources must use the ZotQuery namespace");
+for (const source of [prefsSource, bootstrapSource, nativeSource, toolsSource, researchSource, uiSource, preferencesView]) {
+  assert(!/zotseek/i.test(source), "active ZotQuery runtime must not share ZotSeek namespaces");
+}
 assert(researchSource.includes("getEmbeddingModel"), "Research health must read the active ZotQuery embedding model");
 assert(researchSource.includes("embeddingContract") && researchSource.includes("sameModel"), "health must expose the single-model contract");
 for (const obsolete of ["127.0.0.1:43150", "lneBaseUrl", "preferNative", "qwen3:8b", "genModel", "/api/tool/find"]) {
@@ -298,13 +305,13 @@ const expectedLNETools = [
 for (const name of expectedLNETools) assert(toolsSource.includes(`"${name}"`), `missing V3-compatible tool ${name}`);
 assert(uiSource.includes("openDashboard") && uiSource.includes("ZotQuery 研究工作台"), "custom UI must replace upstream discovery entry points");
 assert(uiSource.includes('#menu_ToolsPopup menuitem') && uiSource.includes('toolsItem?.remove()'), "upstream Tools entry must be removed");
-assert(uiSource.includes('getElementById("zotseek-toolbar-button")?.remove()'), "upstream toolbar entry must be removed");
+assert(uiSource.includes('getElementById("zotquery-toolbar-button")?.remove()'), "upstream toolbar entry must be removed");
 assert(!uiSource.includes("replaceButton(toolbar"), "toolbar entry must not be rebranded and retained");
 assert(uiSource.includes('prefs-navigation') && uiSource.includes('ZotQuery'), "preferences navigation must be rebranded");
 assert(uiSource.includes("bindProfilePreferences(win)"), "Note and Output settings must be bound");
 assert(preferencesView.includes('id="lne-note-profile"') && preferencesView.includes('id="lne-output-profile"'), "settings must expose profile selectors");
 assert(preferencesView.includes('id="zotquery-group-note-indexing"') && preferencesView.includes('id="lne-note-library-scope"') && preferencesView.includes('id="lne-note-autosync"'), "Note indexing must have its own settings section");
-assert(uiSource.includes('"zotseek.lneNative.libraryScope"') && uiSource.includes('"zotseek.lneNative.autoSync"'), "Note index controls must persist their preferences");
+assert(uiSource.includes('"zotquery.lneNative.libraryScope"') && uiSource.includes('"zotquery.lneNative.autoSync"'), "Note index controls must persist their preferences");
 assert(uiSource.includes('root.getAttribute("data-lne-bound")'), "settings binding guard must be per pane, not per preferences window");
 const settingIds = [...preferencesView.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 assert.equal(new Set(settingIds).size, settingIds.length, "settings controls must have unique IDs");
@@ -317,7 +324,7 @@ vm.runInContext(uiSource.slice(localeStart, localeEnd) + "\nthis.localizePrefere
 const labelNode = { label: "笔记索引", getAttribute(key) { return key === "label" ? this.label : null; }, setAttribute(key, value) { if (key === "label") this.label = value; } };
 const textNode = { nodeValue: "研究系统状态", parentElement: { localName: "summary" } };
 const rootNode = { querySelectorAll: () => [labelNode] };
-const doc = { getElementById: id => id === "zotseek-preferences" ? rootNode : null, createTreeWalker: () => ({ currentNode: null, nextNode() { if (this.currentNode) return false; this.currentNode = textNode; return true; } }) };
+const doc = { getElementById: id => id === "zotquery-preferences" ? rootNode : null, createTreeWalker: () => ({ currentNode: null, nextNode() { if (this.currentNode) return false; this.currentNode = textNode; return true; } }) };
 localeSandbox.localizePreferences({ document: doc });
 assert.equal(labelNode.label, "Note indexing", "English Zotero locale must translate settings labels");
 assert.equal(textNode.nodeValue, "Research status", "English Zotero locale must translate settings text");
@@ -326,8 +333,8 @@ labelNode.label = "笔记索引";
 localeSandbox.localizePreferences({ document: doc });
 assert.equal(labelNode.label, "笔记索引", "Chinese Zotero locale must retain Chinese labels");
 assert(preferencesView.includes('id="lne-note-profile-json"') && preferencesView.includes('id="lne-output-profile-json"'), "settings must support JSON profile import");
-assert(prefsSource.includes('zotseek.outputProfile'), "default output profile preference must exist");
-assert(researchSource.includes('Zotero.Prefs.get("zotseek.outputProfile",true)'), "research rendering must honor the selected default profile");
+assert(prefsSource.includes('zotquery.outputProfile'), "default output profile preference must exist");
+assert(researchSource.includes('Zotero.Prefs.get("zotquery.outputProfile",true)'), "research rendering must honor the selected default profile");
 assert(bootstrapSource.includes("ZotQueryStartupErrors"), "startup failures must retain concrete diagnostics");
 assert(researchSource.includes('`zotquery_${String(name).replace(/^lne_/,"")}`'), "MCP must expose ZotQuery tool names");
 assert(researchSource.includes('source:"protected-identity"'), "distinct protected identifiers must remain MUST terms");
@@ -335,4 +342,4 @@ assert(nativeSource.includes('queryReady: !!probe?.ready'), "health must report 
 assert(preferencesView.includes("研究系统状态") && preferencesView.includes("共享向量模型") && preferencesView.includes("Agent 与统一 MCP"), "preferences must use the Research workflow information architecture");
 assert(dashboardView.includes("创建证据研究会话") && dashboardView.includes("EXACT：必须由 PDF FactRecord 闭合"), "dashboard must expose evidence-first workflow controls");
 
-console.log("3.0.11 public-candidate offline regression tests passed");
+console.log("3.0.12 public-candidate offline regression tests passed");

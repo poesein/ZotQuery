@@ -5,7 +5,7 @@
 "use strict";
 
 ((global) => {
-  const VERSION = "3.0.11";
+  const VERSION = "3.0.12";
   let dashboardWindow = null;
   let observer = null;
   let refreshTimer = null;
@@ -50,7 +50,7 @@
   };
   function localizePreferences(win) {
     if (isChinese()) return;
-    const root = win?.document?.getElementById("zotseek-preferences");
+    const root = win?.document?.getElementById("zotquery-preferences");
     if (!root) return;
     for (const node of root.querySelectorAll("*")) {
       for (const attribute of ["label", "placeholder"]) {
@@ -75,8 +75,8 @@
         return dashboardWindow;
       }
       dashboardWindow = Zotero.getMainWindow().openDialog(
-        "chrome://zotseek/content/researchDashboard.xhtml",
-        "zotseek-lne-research-dashboard",
+        "chrome://zotquery/content/researchDashboard.xhtml",
+        "zotquery-lne-research-dashboard",
         "chrome,centerscreen,resizable,dialog=no,width=980,height=720",
         { query: String(options.query || "") }
       );
@@ -94,7 +94,7 @@
     for (const attr of ["command", "oncommand", "mousedown", "onmousedown"]) fresh.removeAttribute(attr);
     fresh.setAttribute("label", label);
     fresh.setAttribute("tooltiptext", tooltip);
-    fresh.style.listStyleImage = 'url("chrome://zotseek/content/icons/icon-toolbar.svg")';
+    fresh.style.listStyleImage = 'url("chrome://zotquery/content/icons/icon-toolbar.svg")';
     const eventName = String(fresh.localName || "").toLowerCase() === "menuitem" ? "command" : "click";
     fresh.addEventListener(eventName, onCommand);
     node.replaceWith(fresh);
@@ -106,9 +106,9 @@
     if (!doc) return;
 
     // Remove the upstream toolbar entry; keep context-menu and settings access.
-    doc.getElementById("zotseek-toolbar-button")?.remove();
+    doc.getElementById("zotquery-toolbar-button")?.remove();
 
-    const contextIds = ["zotseek-find-similar", "zotseek-open-dialog"];
+    const contextIds = ["zotquery-find-similar", "zotquery-open-dialog"];
     const first = doc.getElementById(contextIds[0]);
     if (first && first.getAttribute("data-lne-ui") !== "3") {
       const fresh = replaceButton(first, {
@@ -121,15 +121,15 @@
     doc.getElementById(contextIds[1])?.remove();
 
     const labels = {
-      "zotseek-index-selected": "更新所选文献的 PDF 索引",
-      "zotseek-index-collection": "更新所选分类的 PDF 索引",
-      "zotseek-index-library": "更新全部 PDF 索引",
-      "zotseek-remove-from-index": "从 PDF 索引移除所选文献",
+      "zotquery-index-selected": "更新所选文献的 PDF 索引",
+      "zotquery-index-collection": "更新所选分类的 PDF 索引",
+      "zotquery-index-library": "更新全部 PDF 索引",
+      "zotquery-remove-from-index": "从 PDF 索引移除所选文献",
     };
     for (const [id, label] of Object.entries(labels)) doc.getElementById(id)?.setAttribute("label", label);
 
-    const toolsItem = doc.getElementById("zotseek-menuTools-search")
-      || doc.querySelector('[data-l10n-id="zotseek-menuTools-search"]')
+    const toolsItem = doc.getElementById("zotquery-menuTools-search")
+      || doc.querySelector('[data-l10n-id="zotquery-menuTools-search"]')
       || Array.from(doc.querySelectorAll("#menu_ToolsPopup menuitem")).find(node =>
         [node.getAttribute("label"), node.label, node.querySelector(".menu-text")?.textContent?.trim(), node.textContent?.trim()]
           .some(value => value === "ZotQuery")
@@ -142,7 +142,7 @@
   function customizeReader(reader) {
     try {
       const doc = reader?._iframeWindow?.document;
-      for (const button of doc?.querySelectorAll?.(".zotseek-reader-button") || []) {
+      for (const button of doc?.querySelectorAll?.(".zotquery-reader-button") || []) {
         if (button.getAttribute("data-lne-ui") === "3") continue;
         const fresh = button.cloneNode(true);
         fresh.setAttribute("data-lne-ui", "3");
@@ -222,15 +222,15 @@
     if (noteAPI) {
       const active = noteAPI.active() || "";
       fill("lne-note-profile", [{value:"",label:uiText("自动识别（通用及兼容格式）", "Auto-detect (generic and compatible formats)")}, ...noteAPI.list().map(p => ({value:p.id,label:`${p.name} [${p.source}]`}))], active);
-      const scope = String(Zotero.Prefs.get("zotseek.lneNative.noteScope", true) || "all");
+      const scope = String(Zotero.Prefs.get("zotquery.lneNative.noteScope", true) || "all");
       doc.getElementById("lne-note-scope").value = scope;
-      doc.getElementById("lne-note-library-scope").value = String(Zotero.Prefs.get("zotseek.lneNative.libraryScope", true) || "user");
-      doc.getElementById("lne-note-autosync").checked = Zotero.Prefs.get("zotseek.lneNative.autoSync", true) === true;
-      doc.getElementById("lne-note-title-pattern").value = String(Zotero.Prefs.get("zotseek.lneNative.titlePattern", true) || "");
+      doc.getElementById("lne-note-library-scope").value = String(Zotero.Prefs.get("zotquery.lneNative.libraryScope", true) || "user");
+      doc.getElementById("lne-note-autosync").checked = Zotero.Prefs.get("zotquery.lneNative.autoSync", true) === true;
+      doc.getElementById("lne-note-title-pattern").value = String(Zotero.Prefs.get("zotquery.lneNative.titlePattern", true) || "");
       noteStatus.textContent = uiText(`当前：${active || "自动识别"}；笔记范围：${scope}。`, `Current: ${active || "auto-detect"}; note scope: ${scope}.`);
     } else noteStatus.textContent = uiText(`Note Profile 未启动${Zotero.ZotQueryStartupErrors?.lne ? `：${Zotero.ZotQueryStartupErrors.lne}` : ""}`, `Note Profile unavailable${Zotero.ZotQueryStartupErrors?.lne ? `: ${Zotero.ZotQueryStartupErrors.lne}` : ""}`);
     if (outputAPI) {
-      const selected = String(Zotero.Prefs.get("zotseek.outputProfile", true) || "standard");
+      const selected = String(Zotero.Prefs.get("zotquery.outputProfile", true) || "standard");
       fill("lne-output-profile", outputAPI.list().map(p => ({value:p.id,label:`${p.name} [${p.source}]`})), outputAPI.get(selected) ? selected : "standard");
       outputStatus.textContent = uiText(`默认 ${selected}。`, `Default: ${selected}.`);
     } else outputStatus.textContent = uiText(`Output Profile 未启动${Zotero.ZotQueryStartupErrors?.research ? `：${Zotero.ZotQueryStartupErrors.research}` : ""}`, `Output Profile unavailable${Zotero.ZotQueryStartupErrors?.research ? `: ${Zotero.ZotQueryStartupErrors.research}` : ""}`);
@@ -259,10 +259,10 @@
         if (scope !== "all" && !pattern) throw new Error(uiText("请填写笔记匹配字面量", "Enter note match text"));
         if (!confirm(uiText("保存后需重启 Zotero 才会按新范围重新同步笔记索引。缩小范围会移除不再匹配的索引记录，不会删除 Zotero 原始笔记或 PDF 索引。继续吗？", "Restart Zotero after saving to resync the note index. Narrowing the scope removes unmatched index records, not original Zotero notes or the PDF index. Continue?"))) return;
         api.select(id, {confirmed:true});
-        Zotero.Prefs.set("zotseek.lneNative.noteScope", scope, true);
-        Zotero.Prefs.set("zotseek.lneNative.libraryScope", libraryScope, true);
-        Zotero.Prefs.set("zotseek.lneNative.autoSync", autoSync, true);
-        Zotero.Prefs.set("zotseek.lneNative.titlePattern", pattern, true);
+        Zotero.Prefs.set("zotquery.lneNative.noteScope", scope, true);
+        Zotero.Prefs.set("zotquery.lneNative.libraryScope", libraryScope, true);
+        Zotero.Prefs.set("zotquery.lneNative.autoSync", autoSync, true);
+        Zotero.Prefs.set("zotquery.lneNative.titlePattern", pattern, true);
         refreshProfilePreferences(win);
         status("lne-note-profile-status", uiText("笔记索引设置已保存；请重启 Zotero 后刷新状态。", "Note index settings saved. Restart Zotero, then refresh status."));
       } catch (e) { status("lne-note-profile-status", e?.message || String(e), true); }
@@ -293,7 +293,7 @@
       try {
         const id = String(doc.getElementById("lne-output-profile").value || "");
         if (!Zotero.ZotQueryOutputProfiles?.get(id)) throw new Error(uiText("输出配置不存在", "Output profile not found"));
-        Zotero.Prefs.set("zotseek.outputProfile", id, true);
+        Zotero.Prefs.set("zotquery.outputProfile", id, true);
         refreshProfilePreferences(win);
         status("lne-output-profile-status", uiText(`默认输出已设为 ${id}。`, `Default output set to ${id}.`));
       } catch (e) { status("lne-output-profile-status", e?.message || String(e), true); }
@@ -318,7 +318,7 @@
 
   function onPrefsLoad(win) {
     const doc = win?.document;
-    const root = doc?.getElementById("zotseek-preferences");
+    const root = doc?.getElementById("zotquery-preferences");
     if (!root || root.getAttribute("data-lne-bound") === "1") return;
     root.setAttribute("data-lne-bound", "1");
     const navigation = doc.getElementById("prefs-navigation");

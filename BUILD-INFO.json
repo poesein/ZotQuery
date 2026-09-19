@@ -1,9 +1,9 @@
 {
   "product": "ZotQuery",
-  "version": "3.0.11",
+  "version": "3.0.12",
   "upstream": "ZotSeek 1.21.2",
   "upstream_sha256": "7daaf964b1f11da274f201a1671dc82560add264f4b56f0b602c31b067ce2e69",
-  "plugin_id": "zotseek@zotero.org",
+  "plugin_id": "zotquery@poesein.github.io",
   "zotero": "10.0.*",
   "research_engine": "content/scripts/research-engine.js",
   "query_contract": "v2",

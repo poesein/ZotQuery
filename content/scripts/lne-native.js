@@ -1,10 +1,10 @@
 /**
- * ZotQuery Core 3.0.11 — note parsing and shared semantic retrieval.
+ * ZotQuery Core 3.0.12 — note parsing and shared semantic retrieval.
  *
  * Scope:
  * - Zotero Notes are the source of truth (no exported Markdown directory)
  * - deterministic HTML -> canonical text snapshot
- * - independent zotseek-lne.sqlite attached DB
+ * - independent zotquery-lne.sqlite attached DB
  * - FTS5 lexical index with explicit CJK 3/4-grams
  * - model-aware shared embeddings via ZotQuery public embedding API
  * - persistent segment-vector cache keyed by text hash + model id
@@ -16,13 +16,13 @@
 (function (global) {
   "use strict";
 
-  const VERSION = "3.0.11";
-  const DB_ALIAS = "zotseeklne";
-  const DB_FILE = "zotseek-lne.sqlite";
+  const VERSION = "3.0.12";
+  const DB_ALIAS = "zotquerylne";
+  const DB_FILE = "zotquery-lne.sqlite";
   const SCHEMA_VERSION = 3;
   const PARSER_VERSION = "native-1.3.0";
   const CANON_VERSION = "native-html-1.0.0";
-  const PREF = "zotseek.lneNative.";
+  const PREF = "zotquery.lneNative.";
   const MAX_FIND_TOP = 2000;
   const MAX_HITS_PER_NOTE = 50;
   const HEADING_RX = /^(#{1,6})\s+(.+?)\s*$/;
@@ -328,7 +328,7 @@
   }
   function ensureVectorWorkerInstance() {
     if (state.vectorWorker) return state.vectorWorker;
-    state.vectorWorker = new ChromeWorker("chrome://zotseek/content/scripts/lne-vector-worker.js");
+    state.vectorWorker = new ChromeWorker("chrome://zotquery/content/scripts/lne-vector-worker.js");
     state.vectorWorker.onmessage = event => {
       const msg = event.data || {};
       if (!msg.jobId) return;
@@ -817,12 +817,12 @@
         setTimeout(() => queueMissingVectors({ limit: 5000 }).catch(e => { state.lastVectorError = e?.message || String(e); }), 250);
       }
     };
-    try { Services.prefs.addObserver("extensions.zotero.zotseek.embeddingModel", state.modelPrefObserver); }
+    try { Services.prefs.addObserver("extensions.zotero.zotquery.embeddingModel", state.modelPrefObserver); }
     catch (e) { state.modelPrefObserver = null; log(`embedding model observer unavailable: ${e?.message || e}`); }
   }
   function unregisterEmbeddingModelObserver() {
     if (!state.modelPrefObserver || typeof Services === "undefined") return;
-    try { Services.prefs.removeObserver("extensions.zotero.zotseek.embeddingModel", state.modelPrefObserver); } catch (_) {}
+    try { Services.prefs.removeObserver("extensions.zotero.zotquery.embeddingModel", state.modelPrefObserver); } catch (_) {}
     state.modelPrefObserver = null;
   }
 
@@ -833,7 +833,7 @@
         if (type !== "item") return;
         if (["add", "modify", "delete", "trash"].includes(event)) enqueue(event, ids);
       }
-    }, ["item"], "zotseek-lne-native");
+    }, ["item"], "zotquery-lne-native");
   }
 
   function parseAdvanced(query) {

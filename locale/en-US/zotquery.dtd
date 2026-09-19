@@ -1,4 +1,4 @@
-<!ENTITY zotseek.title "ZotQuery">
+<!ENTITY zotquery.title "ZotQuery">
 <!ENTITY semanticSearch.searchPlaceholder "Search your library...">
 <!ENTITY semanticSearch.findSimilar "Find Similar Documents">
 <!ENTITY semanticSearch.indexCollection "Index Collection">

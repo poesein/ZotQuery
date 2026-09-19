@@ -1,4 +1,4 @@
-/** ZotQuery-LNE Research 3.0.11 bootstrap. */
+/** ZotQuery-LNE Research 3.0.12 bootstrap. */
 
 var chromeHandle;
 
@@ -16,9 +16,9 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   ].getService(Components.interfaces.amIAddonManagerStartup);
   var manifestURI = Services.io.newURI(rootURI + "manifest.json");
   chromeHandle = aomStartup.registerChrome(manifestURI, [
-    ["content", "zotseek", rootURI + "content/"],
-    ["locale", "zotseek", "en-US", rootURI + "locale/en-US/"],
-    ["locale", "zotseek", "zh-CN", rootURI + "locale/zh-CN/"],
+    ["content", "zotquery", rootURI + "content/"],
+    ["locale", "zotquery", "en-US", rootURI + "locale/en-US/"],
+    ["locale", "zotquery", "zh-CN", rootURI + "locale/zh-CN/"],
   ]);
   Zotero.debug("[ZotQuery Bootstrap] Chrome content and locale registered");
 

@@ -3,20 +3,20 @@
 <?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
 <?xml-stylesheet href="chrome://zotero-platform/content/zotero-react-client.css" type="text/css"?>
 <?xml-stylesheet href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
-<?xml-stylesheet href="chrome://zotseek/content/searchDialog.css" type="text/css"?>
+<?xml-stylesheet href="chrome://zotquery/content/searchDialog.css" type="text/css"?>
 <!DOCTYPE window>
 <window
   xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
   xmlns:html="http://www.w3.org/1999/xhtml"
   title="Find Similar Documents"
-  data-l10n-id="zotseek-similar-title"
+  data-l10n-id="zotquery-similar-title"
  
   width="900"
   height="600"
   persist="width,height,screenX,screenY">
 
   <linkset>
-    <html:link rel="localization" href="zotseek.ftl"/>
+    <html:link rel="localization" href="zotquery.ftl"/>
   </linkset>
 
   <!-- Include Zotero's scripts first to make Zotero available -->
@@ -24,7 +24,7 @@
   <script src="chrome://zotero/content/customElements.js"></script>
 
   <!-- Load the dialog script bundle -->
-  <script type="application/javascript" src="chrome://zotseek/content/scripts/similar-documents-dialog.js"/>
+  <script type="application/javascript" src="chrome://zotquery/content/scripts/similar-documents-dialog.js"/>
 
   <vbox flex="1" style="padding: 10px;">
     <!-- Source Document Info -->
@@ -50,9 +50,9 @@
 
     <!-- Footer Buttons -->
     <hbox pack="end" style="margin-top: 10px;">
-      <button id="similar-documents-save-collection-btn" label="Save Results as Collection" disabled="true" style="margin-right: 5px;" data-l10n-id="zotseek-export-saveAsCollection"/>
-      <button id="similar-documents-open-btn" label="Open Selected" disabled="true" style="margin-right: 5px;" data-l10n-id="zotseek-similar-openSelected"/>
-      <button id="similar-documents-close-btn" label="Close" data-l10n-id="zotseek-similar-close"/>
+      <button id="similar-documents-save-collection-btn" label="Save Results as Collection" disabled="true" style="margin-right: 5px;" data-l10n-id="zotquery-export-saveAsCollection"/>
+      <button id="similar-documents-open-btn" label="Open Selected" disabled="true" style="margin-right: 5px;" data-l10n-id="zotquery-similar-openSelected"/>
+      <button id="similar-documents-close-btn" label="Close" data-l10n-id="zotquery-similar-close"/>
     </hbox>
   </vbox>
 

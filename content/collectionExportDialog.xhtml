@@ -8,35 +8,35 @@
   xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
   xmlns:html="http://www.w3.org/1999/xhtml"
   title="Save Results as Collection"
-  data-l10n-id="zotseek-export-dialogTitle"
+  data-l10n-id="zotquery-export-dialogTitle"
   width="500"
   height="200"
   persist="width,height,screenX,screenY">
 
   <linkset>
-    <html:link rel="localization" href="zotseek.ftl"/>
+    <html:link rel="localization" href="zotquery.ftl"/>
   </linkset>
 
   <script src="chrome://zotero/content/include.js"></script>
   <script src="chrome://zotero/content/customElements.js"></script>
 
-  <script type="application/javascript" src="chrome://zotseek/content/scripts/collection-export-dialog.js"/>
+  <script type="application/javascript" src="chrome://zotquery/content/scripts/collection-export-dialog.js"/>
 
   <vbox flex="1" style="padding: 16px; min-width: 440px;">
 
     <!-- Collection name row -->
     <hbox align="center">
-      <label data-l10n-id="zotseek-export-nameLabel" style="min-width: 130px;"/>
+      <label data-l10n-id="zotquery-export-nameLabel" style="min-width: 130px;"/>
       <html:input
-        id="zotseek-export-name"
+        id="zotquery-export-name"
         type="text"
         style="flex: 1 1 auto; padding: 4px 6px; box-sizing: border-box;"/>
     </hbox>
 
     <!-- Library row (hidden if single-library result set) -->
-    <hbox id="zotseek-export-library-row" align="center" style="margin-top: 10px; display: none;">
-      <label data-l10n-id="zotseek-export-libraryLabel" style="min-width: 130px;"/>
-      <menulist id="zotseek-export-library" flex="1">
+    <hbox id="zotquery-export-library-row" align="center" style="margin-top: 10px; display: none;">
+      <label data-l10n-id="zotquery-export-libraryLabel" style="min-width: 130px;"/>
+      <menulist id="zotquery-export-library" flex="1">
         <menupopup/>
       </menulist>
     </hbox>
@@ -46,14 +46,14 @@
     <!-- Status line: item count + destination library -->
     <hbox align="center" style="min-height: 18px; margin-top: 10px;">
       <label
-        id="zotseek-export-status"
+        id="zotquery-export-status"
         style="color: #666; font-size: 11px; font-style: italic;"/>
     </hbox>
 
     <!-- Buttons -->
     <hbox pack="end" style="margin-top: 10px;">
-      <button id="zotseek-export-cancel" data-l10n-id="zotseek-export-cancel" style="margin-right: 6px;"/>
-      <button id="zotseek-export-ok" data-l10n-id="zotseek-export-ok" default="true" disabled="true"/>
+      <button id="zotquery-export-cancel" data-l10n-id="zotquery-export-cancel" style="margin-right: 6px;"/>
+      <button id="zotquery-export-ok" data-l10n-id="zotquery-export-ok" default="true" disabled="true"/>
     </hbox>
 
   </vbox>

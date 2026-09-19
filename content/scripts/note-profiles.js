@@ -121,11 +121,11 @@
     await IOUtils.writeUTF8(path, JSON.stringify(value, null, 2));
     return register(value, "custom");
   }
-  function active() { return String(Zotero.Prefs.get("zotseek.lneNative.activeNoteProfile", true) || "") || null; }
+  function active() { return String(Zotero.Prefs.get("zotquery.lneNative.activeNoteProfile", true) || "") || null; }
   function select(id, { confirmed = false } = {}) {
     if (!confirmed) throw new Error("Profile selection changes future Note indexing; explicit confirmation is required");
     if (id && !get(id)) throw new Error(`Unknown Note Profile: ${id}`);
-    Zotero.Prefs.set("zotseek.lneNative.activeNoteProfile", id || "", true);
+    Zotero.Prefs.set("zotquery.lneNative.activeNoteProfile", id || "", true);
     return { activeProfile: id || null, autoDetect: !id, requiresRestart: true, warning: "Restart Zotero to reconcile Note segments. Existing PDF index and vector cache are preserved; notes outside the selected profile may leave the Note index." };
   }
   const api = { startup, get, list, matches, choose, matchTag, roleForTag, sectionKind, weightForRole, titleFromText, duplicateStyle, validate, draftFromTemplate, installCustom, reloadCustom, active, select };

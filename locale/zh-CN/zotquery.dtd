@@ -1,4 +1,4 @@
-<!ENTITY zotseek.title "ZotQuery">
+<!ENTITY zotquery.title "ZotQuery">
 <!ENTITY semanticSearch.searchPlaceholder "搜索您的文献库...">
 <!ENTITY semanticSearch.findSimilar "查找相似文献">
 <!ENTITY semanticSearch.indexCollection "索引合集">
