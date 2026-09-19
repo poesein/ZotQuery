@@ -75,6 +75,8 @@ Authorization: Bearer <令牌>
 
 `/zotquery/*` REST 与 MCP 均需令牌。详见[部署验收清单](docs/DEPLOY-3.0-ZH.md)和 [MCP 认证说明](docs/MCP-AUTH-ZH.md)。若恶意本地进程能够读取 Zotero profile，它也可能取得令牌；令牌不能防御这种情况。
 
+此源码快照尚不是公开二进制发行版。开发者若需测试 XPI，可按[源码构建说明](docs/BUILDING.md)检查 Git LFS 模型哈希并使用白名单打包；构建成功不等于 Zotero 实机验收通过。
+
 ## 使用方法
 
 快速找文献可使用 PDF 检索界面或 `zotquery_quick_search`；检查已索引 Note 可使用 `zotquery_lne_*`。这些都是**导航性命中**。需要可审计答案时：

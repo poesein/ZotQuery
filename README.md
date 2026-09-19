@@ -75,6 +75,8 @@ Authorization: Bearer <token>
 
 The port may differ on your system. `/zotquery/*` REST and MCP require the bearer token. The [deployment checklist](docs/DEPLOY-3.0-ZH.md) and [MCP authentication guide](docs/MCP-AUTH-ZH.md) give more detail. A machine process able to read the Zotero profile can also recover its token; the token is not a defense against such a process.
 
+This source snapshot is not a public binary release. Developers who need a test XPI can follow the [source build guide](docs/BUILDING.md); it checks the Git LFS model hash and packages an explicit file allowlist. Do not treat a successful build as live Zotero acceptance.
+
 ## Using ZotQuery
 
 For quick discovery, use the PDF search UI or `zotquery_quick_search`, and use the `zotquery_lne_*` tools to inspect indexed Notes. These results are **navigation**, not reviewed evidence. For an auditable research question:
