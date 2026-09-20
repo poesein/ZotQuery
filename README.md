@@ -1,6 +1,6 @@
 # ZotQuery —— 文献内容检索与审阅输出
 
-面向 Zotero 10 的 PDF 与笔记双源检索、证据审阅和可追溯研究工作流。
+适应场景：解决研究者资料库庞大，每次想基于某个问题查询文献都会面临记忆篇目不全和整理工作庞大的这两大问题，直接询问AI又会面临引用数据不全与模型幻觉问题。该插件即可通过详细检索zotero中已有的PDF原文和研究者自身记录的笔记，输出相应条目并搭建完善的上下文阅读、审阅决策与核实要求，迫使 AI agent 给出一个全面、可靠、详实的回答。
 
 [English](README-EN.md) · [下载 3.0.14 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
 
