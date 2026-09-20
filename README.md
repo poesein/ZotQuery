@@ -4,10 +4,6 @@
 
 [English](README-EN.md) · [下载 3.0.14 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
 
-ZotQuery 不把“检索命中”直接当成“已证实的答案”。它帮助研究者从 Zotero 文献库与阅读笔记中发现线索，回到可定位的 PDF 文段，记录审阅和事实，再检查本次研究还有哪些证据缺口。插件在 Zotero 内运行，也向外部 AI 客户端提供带认证的本地 MCP 工具。
-
-当前版本为 **3.0.14**，支持 Zotero 10.0.x。一个现有 Zotero 资料已通过安装版本、索引保留、实时向量查询和认证 MCP 搜索检查；全新资料安装、旧 ID 数据迁移和两个在线模型主机间切换仍未完成端到端验收。请先备份资料，再在可回退的环境中试用。
-
 ## 为什么使用 ZotQuery？
 
 - **PDF 与笔记互补**：PDF 通路定位论文正文；笔记通路找回已整理的观点、实验线索和行号。笔记帮助导航，不自动升级为原始 PDF 证据。
