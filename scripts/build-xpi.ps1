@@ -18,7 +18,7 @@ if ($modelHash -ne $expectedModelHash) { throw "Bundled model hash mismatch. Run
 if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) { throw "7z is required to build the XPI." }
 $outputPath = if ([System.IO.Path]::IsPathRooted($OutputDirectory)) { $OutputDirectory } else { Join-Path $projectRoot $OutputDirectory }
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
-$xpiPath = Join-Path $outputPath "ZotQuery-$version-source-candidate.xpi"
+$xpiPath = Join-Path $outputPath "ZotQuery-$version.xpi"
 if (Test-Path -LiteralPath $xpiPath) { throw "Output already exists; refusing to overwrite: $xpiPath" }
 
 $payload = @(

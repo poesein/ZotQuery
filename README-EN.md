@@ -6,7 +6,7 @@ Dual-source PDF and Note retrieval, evidence review, and traceable research work
 
 ZotQuery does not treat a search hit as a verified answer. It helps researchers find leads in their Zotero library and reading notes, return to locatable PDF passages, record reviews and facts, and see which evidence is still missing. It runs inside Zotero and also exposes authenticated local MCP tools to external AI clients.
 
-The public **3.0.14 pre-release** supports Zotero 10.0.x. One existing Zotero profile passed installed-version, preserved-index, live embedding, and authenticated MCP search checks. Fresh-profile installation, migration from the old extension ID, and switching between two live model hosts have not received end-to-end acceptance testing. Back up your data and try it in a recoverable environment first.
+Version **3.0.14** supports Zotero 10.0.x. One existing Zotero profile passed installed-version, preserved-index, live embedding, and authenticated MCP search checks. Fresh-profile installation, migration from the old extension ID, and switching between two live model hosts have not received end-to-end acceptance testing. Back up your data and try it in a recoverable environment first.
 
 ## Why use ZotQuery?
 
@@ -42,7 +42,7 @@ The shared **embedding model converts text into retrieval vectors**. Bundled Nom
 | Note scope | My Library by default; automatic change sync is off until enabled, with manual sync available |
 | Network | Local inference can stay on the machine; a LAN server receives the text—and possibly credentials—sent to it |
 
-1. Back up the Zotero data directory. Download the XPI from the [pre-release](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14), install it from a file in Zotero's add-on manager, and restart. Version 3.0.14 upgrades the isolated-ID 3.0.12/3.0.13 line, but cannot automatically upgrade or migrate the earlier candidate that used ZotSeek's extension ID.
+1. Back up the Zotero data directory. Download the XPI from the [3.0.14 release](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14), install it from a file in Zotero's add-on manager, and restart. Version 3.0.14 upgrades the isolated-ID 3.0.12/3.0.13 line, but cannot automatically upgrade or migrate the earlier candidate that used ZotSeek's extension ID.
 2. In ZotQuery settings, choose the PDF and Note scopes and one active embedding model. Start with a small mixed sample. If using LAN Ollama, verify connectivity from the Zotero machine; public Internet inference hosts are not supported.
 3. Index PDFs and sync Notes. Inspect PDF coverage, Note-vector coverage, shared-model agreement, and **query-time model readiness** separately. A complete cache does not mean a stopped server can answer a new dense query.
 4. Explore with search, or let an MCP-capable client follow the research workflow below. For primary evidence, open PDF context rather than quoting a search preview or a Note alone.
@@ -74,4 +74,4 @@ The three SQLite files above keep PDF indexes, Note/Survey state, and Evidence s
 
 ZotQuery adapts the PDF retrieval and embedding runtime of [ZotSeek](https://github.com/introfini/ZotSeek) 1.21.2, adding the native Note path, Survey, Evidence, guarded output, and unified MCP. Project contributions use the root [MIT license](LICENSE); third-party attribution and unresolved provenance details are in the [notice](THIRD-PARTY-NOTICE.md). See [Building](docs/BUILDING.md) for source checks. When reporting issues, share versions, reproduction steps, and **redacted** logs—never a full Zotero profile or database.
 
-The [release audit](docs/RELEASE-AUDIT-ZH.md) records the pre-release checks and outstanding acceptance work.
+The [release audit](docs/RELEASE-AUDIT-ZH.md) records completed checks and outstanding acceptance work.
