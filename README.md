@@ -1,4 +1,4 @@
-# ZotQuery
+# ZotQuery —— 文献内容检索与审阅输出
 
 面向 Zotero 10 的 PDF 与笔记双源检索、证据审阅和可追溯研究工作流。
 
