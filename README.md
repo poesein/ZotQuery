@@ -1,79 +1,79 @@
 # ZotQuery
 
-Dual-source PDF and Note retrieval, evidence review, and traceable research workflows inside Zotero 10.
+面向 Zotero 10 的 PDF 与笔记双源检索、证据审阅和可追溯研究工作流。
 
-[简体中文](README-ZH.md) · [Download the 3.0.14 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14) · [Architecture](docs/ARCHITECTURE-3.0-ZH.md) · [Report an issue](https://github.com/poesein/ZotQuery/issues)
+[English](README-EN.md) · [下载 3.0.14 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
 
-ZotQuery does not treat a search hit as a verified answer. It helps researchers find leads in their Zotero library and reading notes, return to locatable PDF passages, record reviews and facts, and see which evidence is still missing. It runs inside Zotero and also exposes authenticated local MCP tools to external AI clients.
+ZotQuery 不把“检索命中”直接当成“已证实的答案”。它帮助研究者从 Zotero 文献库与阅读笔记中发现线索，回到可定位的 PDF 文段，记录审阅和事实，再检查本次研究还有哪些证据缺口。插件在 Zotero 内运行，也向外部 AI 客户端提供带认证的本地 MCP 工具。
 
-The public **3.0.14 pre-release** supports Zotero 10.0.x. One existing Zotero profile passed installed-version, preserved-index, live embedding, and authenticated MCP search checks. Fresh-profile installation, migration from the old extension ID, and switching between two live model hosts have not received end-to-end acceptance testing. Back up your data and try it in a recoverable environment first.
+当前公开版本为 **3.0.14 预发布版**，仅支持 Zotero 10.0.x。一个现有 Zotero 资料已通过安装版本、索引保留、实时向量查询和认证 MCP 搜索检查；全新资料安装、旧 ID 数据迁移和两个在线模型主机间切换仍未完成端到端验收。请先备份资料，再在可回退的环境中试用。
 
-## Why use ZotQuery?
+## 为什么使用 ZotQuery？
 
-- **PDFs and notes play different roles.** PDF search locates original text; Note search recovers organized observations and reading trails. A Note hit is a lead, not automatically primary-source evidence.
-- **The search scope is explicit.** A Query Contract separates required, optional, excluded, and caller-declared alias terms. Coverage is measured against that contract and the indexed corpus—not claimed for every paper in existence.
-- **Review is auditable.** Candidate positions, context access, review decisions, typed fact values, source quotes, and unresolved conflicts have separate persisted states.
-- **Research can resume.** Survey keeps multi-angle queries, deduplicated candidate works, screening decisions, and reading progress across Zotero restarts.
-- **One embedding runtime serves both paths.** PDF and Note indexes remain separate, but use the same active model. An Ollama endpoint move may reuse vectors only after guarded equivalence checks; a genuinely different model is not silently mixed in.
-- **Humans and AI clients can share the workflow.** Zotero provides local UI, while `zotquery_*` MCP tools let a client inspect and update the research ledger. Output profiles change presentation without weakening evidence gates.
+- **PDF 与笔记互补**：PDF 通路定位论文正文；笔记通路找回已整理的观点、实验线索和行号。笔记帮助导航，不自动升级为原始 PDF 证据。
+- **检索范围可说明**：Query Contract 区分必须满足、建议出现、明确排除和调用方声明的别名。覆盖结论始终相对于这份契约与已索引内容，而不是声称“查完全部文献”。
+- **审阅过程可追踪**：候选位置、上下文访问、审阅决策、事实值、来源短引和冲突分别保存。能看出哪些内容只是命中，哪些经过审阅，哪些仍未解决。
+- **一次调研可以继续**：Survey 保留多角度查询、候选论文、筛选和阅读状态；关闭 Zotero 后仍可继续，而非每次从空白搜索结果重来。
+- **PDF 与 Note 共用向量模型**：两条通路共用当前 embedding 接口，但索引和定位信息分别保存。经严格核验为同一 Ollama 模型的地址切换可沿用既有向量；真实换模不会静默混用。
+- **适合人与 AI 协作**：Zotero 内可查看状态，外部客户端可调用统一的 `zotquery_*` MCP 工具。输出模板组织研究台账，却不会越过证据门禁替你编造结论。
 
-The added value over a tool that only returns top-ranked passages is the distinction between **retrieved** and **read and reviewed**. ZotQuery does not claim benchmark superiority over other plugins or replace scientific judgment.
+相较于仅返回相关段落的检索工具，ZotQuery 的重点是把“找到了什么”和“读过并确认了什么”分开。它不宣称比其他插件有更高召回率或更快速度，也不能代替研究者判断论文的实验设计与科学含义。
 
-## Architecture at a glance
+## 架构一览
 
-![ZotQuery architecture: PDF and Note indexes, evidence workflow, and local interfaces](docs/assets/zotquery-architecture.png)
+![ZotQuery 双源检索与证据研究架构图](docs/assets/zotquery-architecture.png)
 
-Core, Search, Survey, Evidence, Agent, and MCP are responsibilities **inside one Zotero plugin**, not six separate services or models. The three database labels in the diagram match version 3.0.14: `zotquery.sqlite`, `zotquery-lne.sqlite`, and `zotquery-research.sqlite`. The embedding service may also run on a trusted private IPv4 LAN, not only on loopback. See the [architecture notes](docs/ARCHITECTURE-3.0-ZH.md) for details.
+图中 Core、Search、Survey、Evidence、Agent 和 MCP 是**同一个 Zotero 插件内的职责模块**，不是六个独立服务或模型。底部三个数据库名对应 3.0.14 使用的 `zotquery.sqlite`、`zotquery-lne.sqlite` 和 `zotquery-research.sqlite`。embedding 服务除本机外也可位于可信私有 IPv4 局域网。详见[架构详解](docs/ARCHITECTURE-3.0-ZH.md)。
 
-| Path or module | Responsibility | Important limit |
+| 通路或模块 | 做什么 | 不做什么 |
 | --- | --- | --- |
-| Search (PDF) | Extract and chunk indexed PDFs, run lexical/semantic retrieval, retain page and passage positions where available | Cannot promise complete text from scans, truncated extraction, or unindexed attachments |
-| Core (Note) | Canonicalize and segment notes, apply configured evidence-role labels, index text and vectors, retain canonical line references | A Note label does not prove the corresponding original-paper claim |
-| Survey and Evidence | Organize candidates, read context, record reviews and FactRecords, inspect coverage and conflicts | Co-occurring terms and similarity scores are not facts |
-| Agent, output, and MCP | Orchestrate steps, present persisted results, and expose tools to external clients | Not a built-in generative agent that independently writes and validates a research answer |
+| Search（PDF） | 提取与分块已收录 PDF，建立词法/向量索引，保留可用的页码和位置 | 不保证扫描件、截断页或未索引附件被完整读到 |
+| Core（Note） | 规范化笔记、分段、识别配置过的证据角色，提供词法/向量检索及行号 | 不把笔记标签自动证明为原论文结论 |
+| Survey 与 Evidence | 组织候选、读取上下文、记录审阅与 FactRecord，并检查覆盖与冲突 | 不把词项共现或相似分数直接当作事实 |
+| Agent、输出与 MCP | 编排研究步骤、呈现持久化结果、向外部客户端开放工具 | 不内置一个能够自行完成科研判断的生成式大模型 |
 
-The shared **embedding model converts text into retrieval vectors**. Bundled Nomic/ONNX or a configured embedding server is not a chat model. Any generative model used to synthesize an answer belongs to the calling client, not to ZotQuery's indexing requirement.
+共享的 **embedding 模型只负责把文本变成检索向量**。内置 Nomic/ONNX 路线或配置的 embedding 服务都不是自动撰写答案的聊天模型；使用哪种外部生成模型，由调用 ZotQuery 的客户端自行决定。
 
-## Install and get started
+## 安装与开始使用
 
-| Item | Requirement or default |
+| 项目 | 要求或默认行为 |
 | --- | --- |
-| Zotero | 10.0.x; install the XPI through Zotero's add-on manager |
-| Embeddings | Bundled Nomic ONNX model or a reachable compatible embedding service; Qwen or another generative model is not required for indexing |
-| PDF scope | Title and abstract by default; select full PDF and inspect extraction/coverage for original-passage research |
-| Note scope | My Library by default; automatic change sync is off until enabled, with manual sync available |
-| Network | Local inference can stay on the machine; a LAN server receives the text—and possibly credentials—sent to it |
+| Zotero | 10.0.x；请通过插件管理器安装 XPI |
+| 向量模型 | 可使用打包的 Nomic ONNX 模型，或配置可访问的兼容 embedding 服务；不需要 Qwen/生成模型才能索引和检索 |
+| PDF 索引 | 默认仅题名与摘要；需要原文证据时应选择完整 PDF 并检查提取与覆盖状态 |
+| Note 索引 | 默认 My Library，自动变更同步关闭；可在设置中选择范围和手动同步 |
+| 网络 | 本机推理可在本地运行；使用局域网服务时，发送的文本和可能的凭据会经过该网络 |
 
-1. Back up the Zotero data directory. Download the XPI from the [pre-release](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14), install it from a file in Zotero's add-on manager, and restart. Version 3.0.14 upgrades the isolated-ID 3.0.12/3.0.13 line, but cannot automatically upgrade or migrate the earlier candidate that used ZotSeek's extension ID.
-2. In ZotQuery settings, choose the PDF and Note scopes and one active embedding model. Start with a small mixed sample. If using LAN Ollama, verify connectivity from the Zotero machine; public Internet inference hosts are not supported.
-3. Index PDFs and sync Notes. Inspect PDF coverage, Note-vector coverage, shared-model agreement, and **query-time model readiness** separately. A complete cache does not mean a stopped server can answer a new dense query.
-4. Explore with search, or let an MCP-capable client follow the research workflow below. For primary evidence, open PDF context rather than quoting a search preview or a Note alone.
+1. 备份 Zotero 数据目录，从[预发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14)下载 XPI，在 Zotero 插件管理器中从文件安装并重启。3.0.14 可升级同一独立扩展 ID 的 3.0.12/3.0.13；使用旧 ZotSeek ID 的早期候选版不会原位升级或自动迁移索引。
+2. 打开 ZotQuery 设置，选择 PDF 范围、Note 范围和一个活动向量模型。先用少量 PDF 与笔记测试。若使用局域网 Ollama，确认 Zotero 所在机器能访问服务；公网主机不受支持。
+3. 建立 PDF 索引并同步笔记。检查研究系统状态中的 PDF 覆盖、Note 向量覆盖、共享模型一致性及**查询时服务可用性**；缓存达到 100% 不代表当前服务在线。
+4. 从搜索开始探索，或让支持 MCP 的客户端按下方研究流程工作。需要原始证据时，请打开 PDF 上下文，不要只引用搜索摘要或笔记。
 
-The built-in `generic` Note Profile handles ordinary notes; `strawberry-vnext` is compatibility with one reading-note **format**, not a research-topic preset. Output Profiles (`compact`, `standard`, `exact`, `exhaustive-vnext`) change presentation, not evidence rules. See [Profiles](docs/PROFILES-3.0-ZH.md).
+普通笔记由 `generic` Note Profile 解析；内置的 `strawberry-vnext` 仅兼容一种精读笔记**格式**，不含个人研究方向。Output Profile 包括 `compact`、`standard`、`exact` 和 `exhaustive-vnext`，只改变呈现，不改变证据标准。详见[配置说明](docs/PROFILES-3.0-ZH.md)。
 
-## A traceable research workflow
+## 一次可审计研究怎样进行？
 
-1. Run `zotquery_evidence_plan` to inspect required/optional terms, aliases, and estimated scope. Review automatically planned hard constraints before treating them as the study boundary.
-2. Start `zotquery_evidence_research_start` to combine PDF Evidence and persistent Survey, or `zotquery_evidence_sweep` for a PDF-only coverage session.
-3. Page through `zotquery_evidence_positions`; open required context with `zotquery_evidence_context`, then record `zotquery_evidence_review`. Note leads can be checked against PDFs attached to the same Zotero parent item.
-4. For exact facts, record `zotquery_evidence_fact` from reviewed original PDF passages, retaining value, unit, numbering, quote, and locator. Conflicts require a separate source-backed resolution.
-5. Inspect `zotquery_evidence_finalize` and the persisted research result. Missing scope, reading, fact slots, or conflict decisions keep a session staged. Passing the gate means **ready for synthesis**, not that a final interpretation has been automatically proven.
+1. 用 `zotquery_evidence_plan` 检查问题的 MUST/SHOULD、别名和预估范围；自动规划的硬条件也需要调用方核对。
+2. 用 `zotquery_evidence_research_start` 联动 PDF Evidence 与持久化 Survey，或用 `zotquery_evidence_sweep` 建立纯 PDF 覆盖会话。
+3. 分页查看 `zotquery_evidence_positions`，对需要审阅的位置调用 `zotquery_evidence_context`，再记录 `zotquery_evidence_review`。笔记线索可继续定位到同一 Zotero 父条目的 PDF。
+4. 对精确事实，用已审阅的原始 PDF 文段登记 `zotquery_evidence_fact`，保留值、单位、编号、短引与位置；冲突需要独立来源约束的裁决。
+5. 查看 `zotquery_evidence_finalize` 与研究结果。未满足范围、阅读、事实槽或冲突条件时应保持阶段性状态；满足条件表示“可以进入综合”，**不等于自动证明最终答案正确**。
 
-These steps often repeat and page through many positions; one call per tool is not a completion test. See the [research protocol](docs/RESEARCH-PROTOCOL-ZH.md) and [Query Contract guide](docs/QUERY-CONTRACT-V2-ZH.md).
+上述步骤通常要循环和分页，不是每个工具各调用一次就算完成。详见[研究协议](docs/RESEARCH-PROTOCOL-ZH.md)与[查询契约](docs/QUERY-CONTRACT-V2-ZH.md)。
 
-## Local MCP, storage, and privacy
+## 本地 MCP、数据与隐私
 
-The unified `/zotquery/mcp` endpoint exposes **43 `zotquery_*` tools**, some of which write local research state. Clients must send the `Authorization: Bearer <token>` header using the token obtained in settings. Do not proxy the Zotero Local API port to a LAN or public network. The default port is commonly `23119`; use your Zotero configuration as the authority.
+统一 MCP 在 Zotero 本地 API 的 `/zotquery/mcp` 提供 **43 个 `zotquery_*` 工具**，其中部分会修改本地研究状态。客户端必须发送在设置页取得的 `Authorization: Bearer <令牌>`；不要把 Zotero 本地 API 端口通过代理开放到局域网或公网。默认端口通常是 `23119`，以你的 Zotero 设置为准。
 
-The three SQLite files above keep PDF indexes, Note/Survey state, and Evidence sessions separate. The public XPI contains no personal library, PDF, Note, database, personal preference, inference-server address, or credential. A configured LAN embedding service receives the text sent to it; with plain HTTP, that text and any credentials are unencrypted on the LAN. Whether an external AI client later sends retrieved material to a cloud model depends on that client's settings. **Local plugin storage does not imply an entirely offline research workflow.**
+PDF 索引、笔记/Survey、证据会话分别保存在上述三个本地 SQLite 文件。公开 XPI 不包含你的文献、笔记、数据库、个人偏好、模型服务地址或密钥。配置局域网 embedding 服务时，片段和查询会发往该服务；使用普通 HTTP 时，文本及可能的凭据在局域网上不加密。外部 AI 客户端是否继续把材料发往云端，取决于客户端配置。**插件本地存储不等于整个研究链路绝对离线。**
 
-## Limits, attribution, and development
+## 能力边界与来源
 
-- The Coverage Gate audits **indexed candidates matching the declared query contract**, not all literature. PDF truncation, OCR gaps, and terms in different chunks can cause misses.
-- A DIRECT FactRecord checks a reviewed PDF position and a literal value in the bound quote; it cannot automatically judge negation, assay conditions, units, or scientific interpretation.
-- A PDF page link is made only when the attachment is unambiguous and the physical page is valid. Note links are item-level, with canonical lines and quotes as references.
-- Survey persists progress, Agent orchestrates steps, and MCP provides access. None can force an external model to obey evidence rules.
+- 覆盖门禁审计的是**明确查询契约下的已索引候选**，不是互联网上全部文献；PDF 截断、OCR 缺失及检索词落在不同分块中都可能造成遗漏。
+- DIRECT FactRecord 会检查原始 PDF 位置、已审阅状态和引文中的字面值，但无法自动判断否定语境、实验体系、单位或科学解释是否正确。
+- PDF 仅在附件唯一且物理页有效时生成页级链接；Note 保留规范文本行号和短引，链接仍停在笔记条目级。
+- Survey 保存调查进度；Agent 负责编排流程；MCP 提供访问工具。这三者都不保证外部模型一定遵守证据流程。
 
-ZotQuery adapts the PDF retrieval and embedding runtime of [ZotSeek](https://github.com/introfini/ZotSeek) 1.21.2, adding the native Note path, Survey, Evidence, guarded output, and unified MCP. Project contributions use the root [MIT license](LICENSE); third-party attribution and unresolved provenance details are in the [notice](THIRD-PARTY-NOTICE.md). See [Building](docs/BUILDING.md) for source checks. When reporting issues, share versions, reproduction steps, and **redacted** logs—never a full Zotero profile or database.
+ZotQuery 基于 [ZotSeek](https://github.com/introfini/ZotSeek) 1.21.2 的 PDF 检索与 embedding 运行时改造，新增 Note、Survey、Evidence、输出与统一 MCP。项目采用[根目录 MIT 许可证](LICENSE)，第三方来源与尚待核对的授权细节见[说明](THIRD-PARTY-NOTICE.md)。源码构建与测试见[构建文档](docs/BUILDING.md)；反馈问题请附版本、复现步骤和**脱敏**日志，不要上传 Zotero profile 或数据库。
 
-The [release audit](docs/RELEASE-AUDIT-ZH.md) records the pre-release checks and outstanding acceptance work.
+完整的预发布验收状态与未完成项目见[发布审计](docs/RELEASE-AUDIT-ZH.md)。

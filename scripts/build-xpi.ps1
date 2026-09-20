@@ -23,7 +23,7 @@ if (Test-Path -LiteralPath $xpiPath) { throw "Output already exists; refusing to
 
 $payload = @(
   "manifest.json", "bootstrap.js", "prefs.js", "BUILD-INFO.json",
-  "README.md", "README-ZH.md", "LICENSE", "THIRD-PARTY-NOTICE.md",
+  "README.md", "README-EN.md", "README-ZH.md", "LICENSE", "THIRD-PARTY-NOTICE.md",
   "THIRD-PARTY-LICENSES", "content", "locale", "skin"
 )
 
