@@ -2,6 +2,8 @@
 
 状态：**3.0.14 已作为普通 GitHub Release 发布**。这表示公开分发状态，不表示所有部署环境均已验收。原始四项门禁修补仍在；本机 Zotero 10 已确认管理器版本、实时健康、既有 PDF/Note 索引和带认证 MCP 搜索。尚未做全新 profile、完整旧数据迁移或两个在线推理主机间的端到端切换验收。`node tests/regression-final.mjs` 包含模型地址切换与回退反例并通过；没有为了本次修复执行破坏性索引重建。
 
+2026-09-20 同版本资源刷新只更新包内文档、测试夹具和自动更新清单；`bootstrap.js`、`content/`、`locale/`、`skin/`、`prefs.js`、`manifest.json` 及 `BUILD-INFO.json` 与 `v3.0.14` 标签没有运行时代码差异。Windows CRLF 下的离线测试替换规则已修正，`node tests/regression-final.mjs` 通过。刷新后 XPI SHA256 为 `5fc385299d928f8fba7cf7540fcacc66feb16661545611052573251967d5d35b`。同版本不会触发自动升级；已安装 3.0.14 的用户如需获取刷新后的包，应通过插件管理器手动重装。
+
 3.0.12 起将扩展 ID 改为 `zotquery@poesein.github.io`，并隔离偏好、chrome 资源及 PDF/Note/Research 数据库。它不会原位升级旧 ID 的 3.0.11 候选包，也不会自动复制旧数据；旧版仍需通过 Zotero 插件管理器识别和处理，实机并装与迁移尚待验证。
 
 3.0.13 允许推理客户端连接 loopback 与私有 IPv4 局域网端点；公网主机、内嵌凭据与 HTTP 重定向仍被拒绝。服务模型 ID 加入端点 origin，避免未经核验就让不同主机的同名模型共享向量。已从 Zotero 所在机器直接验证局域网 `/v1/models` 与 1024 维 BGE-M3 `/v1/embeddings`；3.0.14 又通过了插件内实机 MCP 查询。

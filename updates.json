@@ -5,7 +5,7 @@
         {
           "version": "3.0.14",
           "update_link": "https://github.com/poesein/ZotQuery/releases/download/v3.0.14/ZotQuery-3.0.14.xpi",
-          "update_hash": "sha256:ba65d813348d83065939bb9983676bb32871fc0f6659dbca1fe919f50954f689",
+          "update_hash": "sha256:5fc385299d928f8fba7cf7540fcacc66feb16661545611052573251967d5d35b",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0",

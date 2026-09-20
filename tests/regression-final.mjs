@@ -64,7 +64,7 @@ assert.deepEqual(Array.from(factRequest.slots, s => [s.id, s.type]), [["sequence
 // Run the actual planner with only its database cardinality probe stubbed.
 const plannerSource = researchSource
   .replace("await ensureFTS(false); question=", "question=")
-  .replace(/async function expressionStats\(expression,[\s\S]*?\n  }\n  function genericEvidenceHint/, `async function expressionStats(expression) {
+  .replace(/async function expressionStats\(expression,[\s\S]*?\r?\n  }\r?\n  function genericEvidenceHint/, `async function expressionStats(expression) {
     const both = expression.includes('x42α') && expression.includes('mβ7');
     const extraFamilyTerm = expression.includes('"x42"');
     return { matches: both ? (extraFamilyTerm ? 10 : 63) : 1696, papers: both ? (extraFamilyTerm ? 4 : 18) : 264 };
