@@ -2,8 +2,8 @@
 
 ```text
 Zotero PDF ── ZotQuery Search ──┐
-                               ├── ZotQuery Evidence ── ZotQuery Agent
-Zotero Note ── ZotQuery Core ───┤          │                  │
+                                ├── ZotQuery Evidence ── ZotQuery Agent
+Zotero Note ── ZotQuery Core ───┤          │                 │
                   │             └── ZotQuery Survey ─────────┘
                   └── shared embedding model       │
                                          ZotQuery MCP (`zotquery_*`)
