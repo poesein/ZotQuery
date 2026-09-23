@@ -1,4 +1,4 @@
-/** ZotQuery-LNE Research 3.0.14 bootstrap. */
+/** ZotQuery Research 3.1.8 bootstrap. */
 
 var chromeHandle;
 
@@ -72,6 +72,8 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
       await ctx.ZotQueryOutputProfilesBootstrap?.startup?.({ rootURI });
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/research-engine.js`, ctx);
       await ctx.ZotQueryResearchBootstrap?.startup?.();
+      Services.scriptloader.loadSubScript(`${rootURI}content/scripts/model-agent.js`, ctx);
+      await ctx.ZotQueryModelAgentBootstrap?.startup?.({ rootURI });
       Zotero.debug("[ZotQuery Bootstrap] Research Engine started");
     } catch (e) {
       (Zotero.ZotQueryStartupErrors ||= {}).research = e?.message || String(e);
@@ -80,6 +82,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
     }
     Zotero.debug("[ZotQuery Bootstrap] Loading Research UI...");
     try {
+      Services.scriptloader.loadSubScript(`${rootURI}content/scripts/model-preferences.js`, ctx);
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/research-ui.js`, ctx);
       await ctx.ZotQueryResearchUIBootstrap?.startup?.();
       Zotero.debug("[ZotQuery Bootstrap] Research UI started");
@@ -108,6 +111,8 @@ async function shutdown({ id, version, resourceURI, rootURI }, reason) {
   }
 
   try { await Zotero.ZotQueryResearchUI?.shutdown?.(); } catch (e) { Zotero.logError(e); }
+  delete Zotero.ZotQueryModelPreferences;
+  try { await Zotero.ZotQueryModelAgent?.shutdown?.(); } catch (e) { Zotero.logError(e); }
   try { await Zotero.ZotQueryResearch?.shutdown?.(); } catch (e) { Zotero.logError(e); }
   try { await Zotero.ZotQueryLNETools?.shutdown?.(); } catch (e) { Zotero.logError(e); }
   try { await Zotero.ZotQueryLNE?.shutdown?.(); } catch (e) { Zotero.logError(e); }

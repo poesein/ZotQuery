@@ -8,6 +8,17 @@ $manifestPath = Join-Path $projectRoot "manifest.json"
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $version = [string]$manifest.version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Unexpected manifest version: $version" }
+& node (Join-Path $PSScriptRoot 'privacy-scan.mjs') $projectRoot
+if ($LASTEXITCODE -ne 0) { throw 'Public distribution privacy scan failed.' }
+
+# Output templates are user-owned files, never distributable plugin assets.
+$templateDirectory = Join-Path $projectRoot 'content\templates'
+if ((Test-Path -LiteralPath $templateDirectory) -and (Get-ChildItem -LiteralPath $templateDirectory -File -Recurse -Filter '*.md')) {
+  throw 'Bundled Markdown output templates are forbidden. Templates are optional user files.'
+}
+if (Test-Path -LiteralPath (Join-Path $projectRoot 'docs\REPORT-TEMPLATE-vNext.md')) {
+  throw 'Remove the private writing-template document before building a distribution.'
+}
 
 $modelPath = Join-Path $projectRoot "content\models\Xenova\nomic-embed-text-v1.5\onnx\model_quantized.onnx"
 if (-not (Test-Path -LiteralPath $modelPath)) { throw "Bundled model is missing. Run git lfs pull first." }
@@ -18,7 +29,7 @@ if ($modelHash -ne $expectedModelHash) { throw "Bundled model hash mismatch. Run
 if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) { throw "7z is required to build the XPI." }
 $outputPath = if ([System.IO.Path]::IsPathRooted($OutputDirectory)) { $OutputDirectory } else { Join-Path $projectRoot $OutputDirectory }
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
-$xpiPath = Join-Path $outputPath "ZotQuery-$version.xpi"
+$xpiPath = Join-Path $outputPath "ZotQuery-$version-source-candidate.xpi"
 if (Test-Path -LiteralPath $xpiPath) { throw "Output already exists; refusing to overwrite: $xpiPath" }
 
 $payload = @(

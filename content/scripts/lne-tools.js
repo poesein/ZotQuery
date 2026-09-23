@@ -1,12 +1,12 @@
 /*
- * ZotQuery-LNE Research 3.0.14
+ * ZotQuery-LNE Research 3.1.8
  * LNE Native agent-tool layer: full tools, persistent surveys, MCP definitions.
  * Loaded after lne-native.js and before research-engine.js.
  */
 (function (global) {
   "use strict";
 
-  const VERSION = "3.0.14";
+  const VERSION = "3.1.8";
   const DB = "zotquerylne";
   const FACT_TYPES = new Set([
     "naming_equivalence", "construct_boundary", "structure_resolved_range",

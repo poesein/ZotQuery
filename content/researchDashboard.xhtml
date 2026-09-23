@@ -1,130 +1,90 @@
 <?xml version="1.0"?>
 <?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
-<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
-<window id="zotquery-lne-research-dashboard"
-        title="ZotQuery"
-        orient="vertical"
-        width="980" height="720"
-        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        xmlns:html="http://www.w3.org/1999/xhtml">
-  <html:style><![CDATA[
-    :root { --accent:#356ae6; --good:#238636; --warn:#b26a00; --bad:#c62828; }
-    #dashboard { padding:18px; gap:14px; background:var(--material-background,#fff); color:var(--fill-primary,#222); }
-    .hero { display:flex; align-items:center; gap:14px; padding:16px; border-radius:10px; background:linear-gradient(135deg,rgba(53,106,230,.16),rgba(74,179,148,.12)); }
-    .mark { width:44px; height:44px; border-radius:11px; display:grid; place-items:center; color:#fff; background:var(--accent); font-weight:800; font-size:16px; }
-    .title { font-size:21px; font-weight:700; }
-    .subtitle { margin-top:3px; opacity:.72; font-size:12px; }
-    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
-    .card { padding:11px; border:1px solid var(--material-border,#ddd); border-radius:8px; background:var(--material-sidepane,#fafafa); }
-    .metric { margin-top:4px; font-size:17px; font-weight:700; overflow-wrap:anywhere; }
-    .label { font-size:11px; opacity:.7; }
-    .query-panel { padding:14px; border:1px solid var(--material-border,#ddd); border-radius:9px; }
-    #research-query { width:100%; box-sizing:border-box; padding:9px 11px; font-size:14px; border:1px solid var(--material-border,#bbb); border-radius:6px; background:var(--material-background,#fff); color:inherit; }
-    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:center; }
-    button.primary { font-weight:700; }
-    #output { flex:1; min-height:220px; overflow:auto; white-space:pre-wrap; padding:13px; border:1px solid var(--material-border,#ddd); border-radius:8px; background:var(--material-sidepane,#fafafa); font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; }
-    .status-ok { color:var(--good); } .status-bad { color:var(--bad); }
-    @media (prefers-color-scheme:dark) { :root { --accent:#78a0ff; --good:#72d67f; --bad:#ff8585; } }
-  ]]></html:style>
+<?xml-stylesheet href="chrome://zotquery/content/researchDashboard.css" type="text/css"?>
+<window id="zotquery-research-workbench" title="ZotQuery 研究工作台" orient="vertical"
+ width="1180" height="840" persist="width height screenX screenY"
+ xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml">
+  <html:main id="dashboard" class="app-shell">
+    <html:header class="topbar">
+      <html:img class="brand-mark" src="chrome://zotquery/content/icons/favicon.png" alt="ZotQuery"/>
+      <html:div class="brand-copy"><html:h1>ZotQuery <html:span>研究工作台</html:span></html:h1><html:small>3.1.8</html:small></html:div>
+      <html:div class="top-health"><html:span id="health-dot" class="status-dot"></html:span><html:span id="health-label">检查中…</html:span></html:div>
+      <html:button id="open-settings" type="button">ZotQuery 设置</html:button>
+    </html:header>
+    <html:div class="workbench-body">
+      <html:section class="composer" aria-label="研究问题">
+        <html:label for="research-query" class="section-title">研究什么？</html:label>
+        <html:div class="query-row">
+          <html:textarea id="research-query" rows="2" placeholder="输入问题，让模型从 Zotero 文献中检索证据并回答。Ctrl + Enter 开始研究。"></html:textarea>
+          <html:button id="agent-generate" class="primary" type="button">大模型回答</html:button>
+        </html:div>
+        <html:div class="composer-meta"><html:span id="active-model">读取模型配置…</html:span><html:span id="active-template">模板可选</html:span></html:div>
+        <html:details class="research-options">
+          <html:summary>研究选项与人工核验</html:summary>
+          <html:div class="options-grid">
+          <html:div class="inline-grid">
+            <html:label class="field"><html:span>问题模式</html:span><html:select id="question-mode"><html:option value="AUTO">自动判断</html:option><html:option value="STANDARD">标准综合</html:option><html:option value="EXACT">精确事实</html:option></html:select></html:label>
+            <html:label class="field"><html:span>Survey 深度</html:span><html:select id="survey-preset"><html:option value="balanced">平衡</html:option><html:option value="quick">快速</html:option><html:option value="exhaustive">全量</html:option><html:option value="audit">审计</html:option></html:select></html:label>
+          </html:div>
+          <html:label class="field"><html:span>阅读策略</html:span><html:select id="reading-policy"><html:option value="QUERY_EXHAUSTIVE">查询覆盖穷尽</html:option><html:option value="FULL_TEXT_CANDIDATES">候选全文分页</html:option><html:option value="ALL_POSITIONS">所有命中位置</html:option></html:select></html:label>
+          <html:label class="check-row"><html:input id="include-semantic" type="checkbox" checked="checked"/><html:span>同时使用语义检索；语义命中默认仅作导航，不扩大硬查询门禁。</html:span></html:label>
 
-  <script><![CDATA[
-    "use strict";
-    const Z = window.opener?.Zotero || Zotero;
-    const byId = id => document.getElementById(id);
-    const set = (id, value) => { const el=byId(id); if(el) el.textContent=String(value ?? "-"); };
-    const output = value => { byId("output").textContent = typeof value === "string" ? value : JSON.stringify(value,null,2); };
-    const busy = (button, state, text) => { button.disabled=state; if(text) button.setAttribute("label",text); };
+          </html:div>
+          <html:div class="manual-actions"><html:label class="check-row"><html:input id="lexical-only" type="checkbox"/><html:span>笔记召回仅用词法检索</html:span></html:label><html:button id="run-research" type="button">仅创建人工研究会话</html:button><html:span class="muted">不调用输出模型，可在证据台账中逐项核验。</html:span></html:div>
+        </html:details>
+      </html:section>
+      <html:section class="research-progress" aria-label="研究进度">
+        <html:ol class="workflow"><html:li id="step-query" class="active">问题</html:li><html:li id="step-retrieve">检索</html:li><html:li id="step-evidence">核验</html:li><html:li id="step-output">回答</html:li></html:ol>
+        <html:div class="coverage-inline"><html:span>列出 <html:b id="coverage-listed">—</html:b></html:span><html:span>已读 <html:b id="coverage-context">—</html:b></html:span><html:span>审阅 <html:b id="coverage-reviewed">—</html:b></html:span><html:span>事实 <html:b id="coverage-facts">—</html:b></html:span></html:div>
+        <html:div class="progress"><html:span id="coverage-progress"></html:span></html:div>
+      </html:section>
+      <html:section class="content-pane">
+        <html:nav class="tabs" aria-label="工作台视图"><html:button id="tab-report" class="tab active" type="button" data-tab="report" aria-pressed="true">回答正文</html:button><html:button id="tab-evidence" class="tab" type="button" data-tab="evidence" aria-pressed="false">证据台账</html:button></html:nav>
+        <html:section id="view-report" class="view active">
+          <html:div class="view-toolbar"><html:div id="report-meta" class="view-meta">输入问题后开始研究；无需导入模板。</html:div><html:button id="answer-read" type="button" class="mode-active" aria-pressed="true">阅读</html:button><html:button id="answer-source" type="button" aria-pressed="false">Markdown 源码</html:button><html:button id="copy-report" type="button" disabled="disabled">复制回答</html:button><html:button id="save-report" class="primary" type="button" disabled="disabled">保存 .md</html:button></html:div>
+          <html:article id="report-preview" class="markdown-body" aria-label="渲染后的大模型回答"><html:div class="empty"><html:div><html:strong>答案会在这里展开</html:strong>输入问题后点击“大模型回答”。标题、表格、列表与引用会自动排版。</html:div></html:div></html:article>
+          <html:textarea id="report-editor" class="report-editor hidden" aria-label="大模型回答 Markdown 源码" spellcheck="false" placeholder="大模型的回答将显示在这里。
 
-    async function refreshHealth() {
-      try {
-        const h=await Z.ZotQueryResearchUI.health();
-        set("metric-health",h.ok?"正常":"需处理");
-        byId("metric-health").className=`metric ${h.ok?"status-ok":"status-bad"}`;
-        set("metric-pdf",`${h.search?.indexedPapers||0}/${h.search?.totalPapers||0}`);
-        set("metric-notes",h.lne?.notes||0);
-        set("metric-vectors",`${h.lne?.semantic?.vectors||0}/${h.lne?.semantic?.totalUniqueSegments||0}`);
-        set("metric-model",h.embeddingContract?.pdfModelId||"未配置");
-        set("metric-contract",h.embeddingContract?.sameModel?"PDF = Note":"模型不一致");
-        return h;
-      } catch(e) { set("metric-health",`失败`); output(e?.message||String(e)); }
-    }
+回答可直接编辑、复制或保存为 Markdown。证据台账单独保留，不会替代或混入回答。"></html:textarea>
+        </html:section>
+        <html:section id="view-evidence" class="view">
+          <html:div class="view-toolbar"><html:div id="evidence-meta" class="view-meta">尚未创建研究会话</html:div><html:button id="load-positions" type="button" disabled="disabled">加载证据</html:button><html:button id="finalize-session" type="button" disabled="disabled">检查证据完整性</html:button></html:div>
 
-    function conciseFind(result) {
-      return {
-        query:result.query, mode:result.mode, queryPlan:result.queryPlan,
-        returned:result.notes?.length||0, truncation:result.truncation,
-        notes:(result.notes||[]).map(n=>({noteKey:n.noteKey,title:n.title,doi:n.doi,year:n.year,tier:n.tier,score:n.score,tagCounts:n.tagCounts,hits:(n.hits||[]).map(h=>({line:h.line,tag:h.tag,section:h.section,quote:h.quote}))}))
-      };
-    }
-
-    async function quickFind(event) {
-      const q=byId("research-query").value.trim(); if(!q) return;
-      const b=event.currentTarget; busy(b,true,"检索中…"); output("正在检索 Zotero 阅读笔记…");
-      try { output(conciseFind(await Z.ZotQueryLNE.api.find(q,{top:20,hits:3}))); }
-      catch(e) { output(`检索失败：${e?.message||e}`); }
-      finally { busy(b,false,"快速查找笔记"); }
-    }
-
-    async function startResearch(event) {
-      const q=byId("research-query").value.trim(); if(!q) return;
-      const b=event.currentTarget; busy(b,true,"创建中…"); output("正在创建统一 PDF + Note 研究会话…");
-      try {
-        const exact=byId("exact-mode").checked;
-        const r=await Z.ZotQueryResearch.startOrchestratedResearch({question:q,questionMode:exact?"EXACT":"AUTO",surveyPreset:"balanced",surveyLexicalOnly:false,promotionLimit:5});
-        output({sessionId:r.sessionId,surveyId:r.surveyId,questionMode:r.sweep?.questionMode,factRequest:r.sweep?.factRequest,coverage:r.sweep?.coverage,surveyTotals:r.survey?.totals,promotion:r.promotion,workflow:r.workflow});
-      } catch(e) { output(`创建失败：${e?.message||e}`); }
-      finally { busy(b,false,"创建证据研究会话"); }
-    }
-
-    async function syncNotes(event) {
-      const b=event.currentTarget; busy(b,true,"同步中…"); output("正在同步 Zotero Notes 与共享向量…");
-      try { output(await Z.ZotQueryResearchUI.syncNotes()); await refreshHealth(); }
-      catch(e) { output(`同步失败：${e?.message||e}`); }
-      finally { busy(b,false,"同步笔记与向量"); }
-    }
-
-    function setResearchQuery(q){byId("research-query").value=String(q||"");}
-    window.setResearchQuery=setResearchQuery;
-    window.addEventListener("DOMContentLoaded",()=>{
-      const q=window.arguments?.[0]?.query||""; setResearchQuery(q);
-      byId("quick-find").addEventListener("command",quickFind);
-      byId("start-research").addEventListener("command",startResearch);
-      byId("sync-notes").addEventListener("command",syncNotes);
-      byId("refresh-health").addEventListener("command",async()=>output(await refreshHealth()));
-      refreshHealth();
-    },{once:true});
-  ]]></script>
-
-  <vbox id="dashboard" flex="1">
-    <html:div class="hero">
-      <html:div class="mark">LNE</html:div>
-      <html:div>
-        <html:div class="title">ZotQuery</html:div>
-        <html:div class="subtitle">PDF 原文检索 · Zotero Note 导航 · Survey · Evidence Gate · Unified MCP</html:div>
-      </html:div>
+          <html:div id="evidence-list" class="empty"><html:div><html:strong>证据台账尚未建立</html:strong>创建统一研究会话后，这里会列出必须逐项阅读和审阅的 PDF 位置。</html:div></html:div>
+          <html:div id="context-drawer" class="context-drawer hidden">
+            <html:div class="section-title"><html:span id="context-title">证据上下文</html:span><html:button id="close-context" class="ghost" type="button">关闭</html:button></html:div>
+            <html:div id="context-links" class="card-actions"></html:div>
+            <html:pre id="context-text" class="context-text"></html:pre>
+            <html:div class="review-grid">
+              <html:select id="review-scope"><html:option value="DIRECT_FACT">DIRECT_FACT</html:option><html:option value="EXPERIMENT_RESULT">EXPERIMENT_RESULT</html:option><html:option value="SEQUENCE_DEFINITION">SEQUENCE_DEFINITION</html:option><html:option value="STRUCTURE_OBSERVATION">STRUCTURE_OBSERVATION</html:option><html:option value="REGION_MAPPING">REGION_MAPPING</html:option><html:option value="BACKGROUND">BACKGROUND</html:option></html:select>
+              <html:input id="review-reason" type="text" placeholder="填写本次审阅判断的简短理由（必填）"/>
+            </html:div>
+            <html:div class="card-actions"><html:button id="review-support" class="primary" type="button">支持问题</html:button><html:button id="review-exclude" type="button">不支持 / 排除</html:button><html:button id="review-more" type="button">需要更多上下文</html:button></html:div>
+            <html:details class="fact-box">
+              <html:summary>登记类型化 FactRecord（仅已确认的 PDF 原文）</html:summary>
+              <html:div class="fact-grid">
+                <html:label class="field"><html:span>Slot</html:span><html:input id="fact-slot" type="text" value="answer"/></html:label>
+                <html:label class="field"><html:span>valueType</html:span><html:select id="fact-type"><html:option value="exact_value">exact_value</html:option><html:option value="sequence">sequence</html:option><html:option value="residue_range">residue_range</html:option><html:option value="secondary_structure_range">secondary_structure_range</html:option><html:option value="functional_motif">functional_motif</html:option><html:option value="quantitative_measurement">quantitative_measurement</html:option><html:option value="mechanism">mechanism</html:option><html:option value="other">other</html:option></html:select></html:label>
+                <html:label class="field"><html:span>实体（可选）</html:span><html:input id="fact-entity" type="text"/></html:label>
+                <html:label class="field"><html:span>编号体系（可选）</html:span><html:input id="fact-numbering" type="text"/></html:label>
+              </html:div>
+              <html:label class="field"><html:span>精确值</html:span><html:input id="fact-value" type="text" placeholder="值必须逐字出现在下方短引中"/></html:label>
+              <html:label class="field"><html:span>PDF 原文短引</html:span><html:textarea id="fact-quote" rows="3" placeholder="粘贴当前 PDF chunk 中的逐字短引"></html:textarea></html:label>
+              <html:button id="record-fact" type="button">记录 DIRECT FactRecord</html:button>
+            </html:details>
+          </html:div>
+          <html:details id="audit-panel" class="audit-panel"><html:summary>研究台账文本（不随回答导出）</html:summary><html:button id="render-report" type="button" disabled="disabled">刷新台账文本</html:button><html:textarea id="audit-editor" class="audit-editor" readonly="readonly" aria-label="研究台账文本"></html:textarea></html:details>
+        </html:section>
+      </html:section>
+      <html:details class="diagnostics"><html:summary>运行记录与索引状态 <html:span id="agent-status">尚未开始研究</html:span></html:summary>
+        <html:div id="agent-log" class="agent-log hidden"></html:div>
+        <html:div id="session-state" class="session-state">尚无研究会话</html:div>
+        <html:div class="index-strip"><html:span>PDF <html:b id="metric-pdf">—</html:b></html:span><html:span>语段 <html:b id="metric-chunks">—</html:b></html:span><html:span>笔记 <html:b id="metric-notes">—</html:b></html:span><html:span>笔记向量 <html:b id="metric-vectors">—</html:b></html:span><html:span>向量模型 <html:b id="metric-model">—</html:b></html:span><html:button id="sync-notes" type="button">同步笔记</html:button><html:button id="refresh-health" type="button">刷新状态</html:button></html:div>
+      </html:details>
     </html:div>
-
-    <html:div class="grid">
-      <html:div class="card"><html:div class="label">系统状态</html:div><html:div id="metric-health" class="metric">检查中…</html:div></html:div>
-      <html:div class="card"><html:div class="label">PDF 索引</html:div><html:div id="metric-pdf" class="metric">-</html:div></html:div>
-      <html:div class="card"><html:div class="label">阅读笔记</html:div><html:div id="metric-notes" class="metric">-</html:div></html:div>
-      <html:div class="card"><html:div class="label">Note 向量覆盖</html:div><html:div id="metric-vectors" class="metric">-</html:div></html:div>
-      <html:div class="card" style="grid-column:span 3"><html:div class="label">共享向量模型</html:div><html:div id="metric-model" class="metric">-</html:div></html:div>
-      <html:div class="card"><html:div class="label">模型合同</html:div><html:div id="metric-contract" class="metric">-</html:div></html:div>
-    </html:div>
-
-    <html:div class="query-panel">
-      <html:input id="research-query" type="text" placeholder="输入研究问题；Unicode 标识符及其字符顺序将原样保留…"/>
-      <html:div class="actions">
-        <button id="quick-find" class="primary" label="快速查找笔记"/>
-        <button id="start-research" class="primary" label="创建证据研究会话"/>
-        <checkbox id="exact-mode" label="EXACT：必须由 PDF FactRecord 闭合" checked="true"/>
-        <spacer flex="1"/>
-        <button id="sync-notes" label="同步笔记与向量"/>
-        <button id="refresh-health" label="刷新状态"/>
-      </html:div>
-    </html:div>
-
-    <html:pre id="output">结果和审计信息将在这里显示。笔记只用于导航；精确事实必须回到同父 PDF。</html:pre>
-  </vbox>
+    <html:footer id="notice" class="notice" role="status" aria-live="polite">研究工作台已就绪。</html:footer>
+  </html:main>
+  <script src="chrome://zotquery/content/vendor/marked.umd.js"></script>
+  <script src="chrome://zotquery/content/scripts/markdown-view.js"></script>
+  <script src="chrome://zotquery/content/scripts/research-dashboard.js"></script>
 </window>

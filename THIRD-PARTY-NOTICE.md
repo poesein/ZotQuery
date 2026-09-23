@@ -1,5 +1,7 @@
 # Third-party notice
 
+The answer viewer bundles **Marked 17.0.5** (`content/vendor/marked.umd.js`), copied from the local runtime's pinned npm package. Its original [MIT license](THIRD-PARTY-LICENSES/Marked-MIT.txt) is included. ZotQuery uses its lexer only and builds a restricted DOM from tokens; arbitrary model HTML is not executed and remote images are not automatically loaded.
+
 This distribution is a research fork/integration built from ZotSeek 1.21.2 by José Fernandes / introfini.
 Upstream project: https://github.com/introfini/zotseek
 The upstream README states "MIT License - see LICENSE", and the `v1.21.2` `package.json` declares `"license": "MIT"`. The upstream `v1.21.2` repository did not contain a LICENSE file when checked, so [the ZotSeek MIT notice](THIRD-PARTY-LICENSES/ZotSeek-MIT.txt) reproduces the standard [SPDX MIT text](https://spdx.org/licenses/MIT.html) with an attribution line based on the upstream author and repository dates. The repository's contributor list showed `introfini` and `wjma-phy` when checked. This is **not** a verbatim upstream LICENSE file; confirm definitive copyright ownership with upstream before describing the binary release as fully cleared.

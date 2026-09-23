@@ -1,4 +1,4 @@
-/* ZotQuery Evidence 3.0.14
+/* ZotQuery Evidence 3.1.8
  * Evidence Engine layered on the Search component.
  * Keeps normal search/indexing intact while adding exhaustive lexical
  * passage enumeration, semantic-union retrieval, adaptive context, LNE bridge,
@@ -7,7 +7,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "3.0.14";
+  const VERSION = "3.1.8";
   const DB = "zotquery";
   const RDB = "zotqueryresearch";
   const RFILE = "zotquery-research.sqlite";
@@ -97,14 +97,40 @@
       return pdfs.length === 1 ? String(pdfs[0].key).toUpperCase() : null;
     } catch (_) { return null; }
   }
-  async function sourceLinks(locator) {
+  async function sourceLinks(locator, { includeRelated = false } = {}) {
     const libraryKey = locator?.libraryKey, itemKey = locator?.itemKey, noteKey = locator?.noteKey;
     const parent = zoteroItemLink(libraryKey, itemKey);
     const note = zoteroItemLink(libraryKey, noteKey);
     const page = Number(locator?.pageNumber);
-    const attachmentKey = parent && Number.isInteger(page) && page > 0 ? await singlePdfAttachmentKey(libraryKey, itemKey) : null;
+    const attachmentKey = parent ? await singlePdfAttachmentKey(libraryKey, itemKey) : null;
     const pdfPage = attachmentKey ? zoteroItemLink(libraryKey, attachmentKey, "open-pdf", page) : null;
-    return { parent, note, pdfPage, attachmentKey, precision: pdfPage ? "pdf-page" : note ? "note-item-plus-lines" : parent ? "parent-item" : "locator-only" };
+    const pdf = attachmentKey ? zoteroItemLink(libraryKey, attachmentKey)?.replace("zotero://select/", "zotero://open-pdf/") : null;
+    const collections = [], notes = [], pdfAttachments = [];
+    if (includeRelated && parent) {
+      try {
+        const libraryID = libraryKey === "user" ? Zotero.Libraries.userLibraryID : Zotero.Groups.getLibraryIDFromGroupID(Number(String(libraryKey).slice(6)));
+        const parentID = Zotero.Items.getIDFromLibraryAndKey(libraryID, itemKey);
+        const item = parentID ? await Zotero.Items.getAsync(parentID) : null;
+        for (const id of item?.getCollections?.() || []) {
+          const collection = await Zotero.Collections.getAsync(id);
+          const url = zoteroItemLink(libraryKey, collection?.key)?.replace("/items/", "/collections/");
+          if (url) collections.push({ name: collection.name || collection.key, url });
+        }
+        for (const id of item?.getNotes?.() || []) {
+          const child = await Zotero.Items.getAsync(id);
+          const url = zoteroItemLink(libraryKey, child?.key);
+          if (url) notes.push({ name: child.getNoteTitle?.() || child.key, url });
+        }
+        for (const id of item?.getAttachments?.() || []) {
+          const child = await Zotero.Items.getAsync(id);
+          if (child?.attachmentMIMEType !== "application/pdf") continue;
+          const url = zoteroItemLink(libraryKey, child.key)?.replace("zotero://select/", "zotero://open-pdf/");
+          if (url) pdfAttachments.push({ name: child.getField?.("title") || child.key, url });
+        }
+      } catch (_) { /* Basic source links remain usable if related metadata is unavailable. */ }
+    }
+    return { parent, note, pdfPage, pdf, attachmentKey, collections, notes, pdfAttachments,
+      precision: pdfPage ? "pdf-page" : note ? "note-item-plus-lines" : parent ? "parent-item" : "locator-only" };
   }
 
   async function ensureZotQuery() {
@@ -326,7 +352,7 @@
     return{normalization:"NFKC for comparison only; original surfaces retained",characterOrder:"identity-significant",automaticAsciiDegradationAliases:false,fuzzySimilarityMayEstablishIdentity:false,warnings};
   }
   function assertNoConfusableAliasGroups(groups) {
-    for(const g of groups||[]){const audit=identifierIdentityAudit(g.aliases||[]);if(audit.warnings.length){const p=audit.warnings[0];throw new Error(`Confusable identifiers cannot share one alias group: ${p.terms.join(" vs ")}. Keep them in separate MUST groups and provide explicit identity evidence if they are scientifically equivalent.`);}}
+    for(const g of groups||[]){const audit=identifierIdentityAudit(g.aliases||[]);if(audit.warnings.length){const p=audit.warnings[0];throw new Error(`Confusable identifiers cannot share one alias group: ${p.terms.join(" vs ")}. Search each identifier separately and combine the results for a comparison; use separate MUST groups only when the question requires co-occurrence. Do not claim identity without source evidence.`);}}
   }
   function expandByAliasRegistry(term, aliasGroups) {
     const key=normKey(term);
@@ -452,7 +478,11 @@
     // surface to its own MUST group; never combine them through fuzzy similarity.
     if(identityPolicy.warnings.length&&!explicitHardContract){
       const guarded=new Set(identityPolicy.warnings.flatMap(x=>x.terms.map(normKey)));
-      for(const g of should.filter(g=>g.surface&&guarded.has(normKey(g.surface)))){
+      const guardedGroups=should.filter(g=>g.surface&&guarded.has(normKey(g.surface)));
+      const comparison=/(?:\b(?:vs\.?|versus|compared?\s+(?:with|to))\b|比较|对比|相比)/i.test(question);
+      const joint=/(?:并存|共现|共同|同时|共存|co-?occur|coexist|together|\bboth\b)/i.test(question);
+      if(comparison&&!joint)must.push({id:"confusable-comparison-union",aliases:uniq(guardedGroups.flatMap(g=>g.aliases)),role:"MUST",source:"comparison-union",autoPromoted:true});
+      else for(const g of guardedGroups){
         if(!must.some(m=>m.aliases.some(a=>normKey(a)===normKey(g.surface))))must.push({...g,role:"MUST",source:"confusable-identity-guard",autoPromoted:true});
       }
       must=dedupeGroups(must);should=should.filter(g=>!g.surface||!guarded.has(normKey(g.surface)));
@@ -517,11 +547,16 @@
     for(const x of negatives)surfaceAudit.push({text:x,role:"MUST_NOT",reason:"explicit exclusion"});
     for(const t of tokens){const mg=must.find(g=>g.aliases.some(a=>normKey(a)===normKey(t)));surfaceAudit.push({text:t,role:mg?"MUST":"SHOULD",reason:mg?(mg.source||"auto anchor"):(identifierType(t)?`protected ${identifierType(t)}`:"meaningful surface term")});}
     const hardExpression=st.expression||expressionFromGroups(must,negatives);
-    const plan={version:"query-contract-v2",originalQuestion:question,preset:null,planType:"must-groups-and/aliases-or",mustGroups:must,shouldGroups:should,mustNot:negatives,evidenceTypeHints:uniq([...(evidenceTypeHints||[]),...(spec.evidenceTypeHints||[])]),hardExpression,rawMatches:st.matches,papers:st.papers,maxRawPositions:ceiling,requiresRefinement:st.matches>ceiling,autoPromotedGroups:must.filter(g=>g.autoPromoted).map(g=>g.id),surfaceAudit,droppedTerms:[],preflight,identityPolicy,libraryKey:libraryKey||null,itemKey:itemKey||null};
+    let zeroHit=null;
+    if(st.matches===0){
+      const groups=[];for(const g of must){const one=await statsFor([g]);groups.push({id:g.id,aliases:g.aliases,matches:one.matches,papers:one.papers});}
+      zeroHit={hardQueryEmpty:true,groupStats:groups,advice:must.length>1&&groups.some(g=>g.matches>0)?"Individual terms have hits but their intersection is empty. For a comparison, run separate sweeps or use an explicitly reviewed union; retain distinct identifier identities.":"The hard query has no indexed PDF hits. Check exact spelling, alias identity, indexing and search scope before claiming that evidence is absent."};
+    }
+    const plan={version:"query-contract-v2",originalQuestion:question,preset:null,planType:"must-groups-and/aliases-or",mustGroups:must,shouldGroups:should,mustNot:negatives,evidenceTypeHints:uniq([...(evidenceTypeHints||[]),...(spec.evidenceTypeHints||[])]),hardExpression,rawMatches:st.matches,papers:st.papers,maxRawPositions:ceiling,requiresRefinement:st.matches>ceiling,zeroHit,autoPromotedGroups:must.filter(g=>g.autoPromoted).map(g=>g.id),surfaceAudit,droppedTerms:[],preflight,identityPolicy,libraryKey:libraryKey||null,itemKey:itemKey||null};
     plan.lneQuery=[...must.filter(g=>g.aliases.length===1).map(g=>`+"${g.aliases[0].replace(/"/g,'')}"`),...must.filter(g=>g.aliases.length>1).flatMap(g=>g.aliases.slice(0,6)),...should.slice(0,12).flatMap(g=>g.aliases.slice(0,2)),...negatives.map(x=>`-"${x.replace(/"/g,'')}"`)].join(" ").trim()||question;
     return plan;
   }
-  function planPublic(plan){return{version:plan.version,planType:plan.planType,preset:plan.preset,mustGroups:plan.mustGroups,shouldGroups:plan.shouldGroups,mustNot:plan.mustNot,evidenceTypeHints:plan.evidenceTypeHints||[],hardExpression:plan.hardExpression,rawMatches:plan.rawMatches,papers:plan.papers,maxRawPositions:plan.maxRawPositions,requiresRefinement:plan.requiresRefinement,autoPromotedGroups:plan.autoPromotedGroups,surfaceAudit:plan.surfaceAudit,droppedTerms:plan.droppedTerms,identityPolicy:plan.identityPolicy,lneQuery:plan.lneQuery};}
+  function planPublic(plan){return{version:plan.version,planType:plan.planType,preset:plan.preset,mustGroups:plan.mustGroups,shouldGroups:plan.shouldGroups,mustNot:plan.mustNot,evidenceTypeHints:plan.evidenceTypeHints||[],hardExpression:plan.hardExpression,rawMatches:plan.rawMatches,papers:plan.papers,maxRawPositions:plan.maxRawPositions,requiresRefinement:plan.requiresRefinement,zeroHit:plan.zeroHit||null,autoPromotedGroups:plan.autoPromotedGroups,surfaceAudit:plan.surfaceAudit,droppedTerms:plan.droppedTerms,identityPolicy:plan.identityPolicy,lneQuery:plan.lneQuery};}
   function shouldMatchInfo(text,plan){const t=normKey(text),matched=[];for(const g of plan?.shouldGroups||[]){if(g.aliases.some(a=>t.includes(normKey(a))))matched.push(g.id);}return{count:matched.length,groups:matched};}
 
   async function lexicalSearch({query, aliases=[], aliasGroups=[], mustGroups=[], shouldGroups=[], mustNot=[], evidenceTypeHints=[], queryPlan=null, preset=null, maxRawPositions=2500, autoTighten=true, limit=500, offset=0, libraryKey=null, itemKey=null, modelId=null}) {
@@ -622,6 +657,7 @@
   async function runSweep({question,aliases=[],aliasGroups=[],mustGroups=[],shouldGroups=[],mustNot=[],evidenceTypeHints=[],includeSemantic=true,requireSemantic=false,semanticLimit=500,minSimilarity=.30,libraryKey=null,includeLNE=true,requireLNE=false,questionMode="AUTO",factRequest=null,readingPolicy="QUERY_EXHAUSTIVE",preset=null,maxRawPositions=2500,allowLargeSweep=false,autoTighten=true,clusterGap=1,querySpec=null}={}) {
     await ensureResearchSchema();await ensureFTS(false);
     const plan=await planEvidenceQuery({question,aliases,aliasGroups,mustGroups,shouldGroups,mustNot,evidenceTypeHints,libraryKey,preset,maxRawPositions,autoTighten,querySpec});
+    if(plan.zeroHit)return{sessionId:null,blockedBeforeSweep:true,question,queryPlan:planPublic(plan),reason:plan.zeroHit.advice,next:"Revise the query contract with evidence_plan, then start a new sweep. Zero hard hits do not establish that the library lacks evidence."};
     if(plan.requiresRefinement&&!allowLargeSweep)return{sessionId:null,blockedBeforeSweep:true,question,queryPlan:planPublic(plan),reason:`Hard lexical predicate still matches ${plan.rawMatches} positions across ${plan.papers} papers, above maxRawPositions=${plan.maxRawPositions}. Add a quoted/+ MUST term, {alias|group}, mustGroups, or exclusions; or explicitly set allowLargeSweep=true.`,next:"Call evidence_plan with a narrower contract or provide explicit mustGroups/aliasGroups."};
     const sessionId=rid(),ts=now(),mode=inferQuestionMode(question,questionMode),request=factRequest||defaultFactRequest(question,mode);
     const p0=String(readingPolicy||"QUERY_EXHAUSTIVE").toUpperCase();const policy=["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"].includes(p0)?p0:"QUERY_EXHAUSTIVE";
@@ -793,11 +829,28 @@
       audit:{generatedAt:now(),source:"persisted research session",noteEvidenceIsNavigation:true,directFactsRequireOriginalPdf:true}};
   }
 
-  async function positions(sessionId,{offset=0,limit=100,status=null,scope="coverage"}={}) {
+  async function positions(sessionId,{offset=0,limit=25,status=null,scope="coverage",compact=false,includeLinks=false}={}) {
     await ensureResearchSchema();const args=[sessionId];let w="session_id=?";const sc=String(scope||"coverage").toLowerCase();if(sc==="coverage")w+=" AND coverage_required=1";else if(sc==="navigation")w+=" AND coverage_required=0";if(status){w+=" AND review_status=?";args.push(status);}const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.positions WHERE ${w}`,args)||0),pageLimit=num(limit,100,1,1000),pageOffset=num(offset,0,0,1e8);
     const rows=await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE ${w} ORDER BY coverage_required DESC,should_match_count DESC,evidence_priority ASC,source,work_key,COALESCE(chunk_index,line_start,0) LIMIT ? OFFSET ?`,[...args,pageLimit,pageOffset]);if(rows?.length){const ids=rows.map(r=>r.position_id);await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET listed_at=COALESCE(listed_at,?),updated_at=? WHERE position_id IN (${ids.map(()=>"?").join(",")})`,[now(),now(),...ids]);}
     const listed=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.positions WHERE ${w} AND listed_at IS NOT NULL`,args)||0),nextOffset=pageOffset+(rows?.length||0)<total?pageOffset+(rows?.length||0):null;
-    return{sessionId,scope:sc,total,offset:pageOffset,limit:pageLimit,nextOffset,pageComplete:nextOffset==null,listingCoverage:{listed,unlisted:Math.max(0,total-listed),allListed:total>0&&listed===total},results:(rows||[]).map(r=>{let evidenceHint=null,queryMatch=null;try{evidenceHint=r.evidence_hint?JSON.parse(r.evidence_hint):null;}catch{}try{queryMatch=r.query_match_json?JSON.parse(r.query_match_json):null;}catch{}return{positionId:r.position_id,source:r.source,workKey:r.work_key,libraryKey:r.library_key,itemKey:r.item_key,title:r.title,chunkIndex:r.chunk_index,pageNumber:r.page_number,paragraphIndex:r.paragraph_index,noteKey:r.note_key,lineStart:r.line_start,lineEnd:r.line_end,matchKind:r.match_kind,score:r.match_score,preview:r.preview,evidenceHint,coverageRequired:!!r.coverage_required,positionRole:r.position_role,clusterId:r.cluster_id,shouldMatchCount:Number(r.should_match_count||0),queryMatch,listedAt:r.listed_at,contextReadAt:r.context_read_at,sameParentPdfStatus:r.same_parent_pdf_status,reviewStatus:r.review_status,contextLevel:Number(r.context_level||0),evidenceScope:r.evidence_scope,supportsQuestion:r.supports_question,reason:r.reason};})};
+    const results = [];
+    const linkCache = new Map();
+    for (const r of rows || []) {
+      const locator = { libraryKey:r.library_key,itemKey:r.item_key,noteKey:r.note_key,chunkIndex:r.chunk_index,pageNumber:r.page_number,paragraphIndex:r.paragraph_index,lineStart:r.line_start,lineEnd:r.line_end };
+      let links;
+      if (includeLinks) {
+        const cacheKey = JSON.stringify([r.library_key,r.item_key,r.note_key,r.page_number]);
+        if (!linkCache.has(cacheKey)) linkCache.set(cacheKey, await sourceLinks(locator, { includeRelated: true }));
+        links = linkCache.get(cacheKey);
+      }
+      const base = { positionId:r.position_id,source:r.source,workKey:r.work_key,...locator,title:r.title,preview:compact?String(r.preview||"").slice(0,220):r.preview,reviewStatus:r.review_status,contextRead:!!r.context_read_at,supportsQuestion:r.supports_question,...(includeLinks?{links}:{}) };
+      if (compact) { results.push(base); continue; }
+      let evidenceHint=null,queryMatch=null;
+      try{evidenceHint=r.evidence_hint?JSON.parse(r.evidence_hint):null;}catch{}
+      try{queryMatch=r.query_match_json?JSON.parse(r.query_match_json):null;}catch{}
+      results.push({...base,matchKind:r.match_kind,score:r.match_score,evidenceHint,coverageRequired:!!r.coverage_required,positionRole:r.position_role,clusterId:r.cluster_id,shouldMatchCount:Number(r.should_match_count||0),queryMatch,listedAt:r.listed_at,contextReadAt:r.context_read_at,sameParentPdfStatus:r.same_parent_pdf_status,contextLevel:Number(r.context_level||0),evidenceScope:r.evidence_scope,reason:r.reason});
+    }
+    return{sessionId,scope:sc,total,offset:pageOffset,limit:pageLimit,nextOffset,pageComplete:nextOffset==null,listingCoverage:{listed,unlisted:Math.max(0,total-listed),allListed:total>0&&listed===total},results};
   }
 
   async function positionContext(positionId,{level=1}={}) {
@@ -812,17 +865,40 @@
     throw new Error("Unsupported position source");
   }
 
+  async function promoteContextChunk(sourcePositionId,{chunkIndex}={}) {
+    await ensureResearchSchema();
+    const parent=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE position_id=?`,[sourcePositionId]))?.[0];
+    if(!parent||parent.source!=="pdf")throw new Error("A source PDF position is required");
+    if(!parent.context_read_at)throw new Error("Read evidence_context before promoting an adjacent PDF chunk");
+    const index=Number(chunkIndex);
+    if(!Number.isInteger(index)||index<0)throw new Error("chunkIndex must be a nonnegative integer");
+    const level=Number(parent.context_level||0),span=level<=0?0:level===1?2:level===2?5:12;
+    if(Math.abs(index-Number(parent.chunk_index))>span)throw new Error("Chunk is outside the context span already read; reopen evidence_context at a larger level");
+    const pk=await Zotero.DB.valueQueryAsync(`SELECT item_pk FROM ${DB}.items WHERE library_key=? AND item_key=?`,[parent.library_key,parent.item_key]);
+    if(pk==null)throw new Error("Indexed PDF item is unavailable");
+    const chunk=(await Zotero.DB.queryAsync(`SELECT chunk_index,chunk_text,page_number,paragraph_index FROM ${DB}.chunks WHERE item_pk=? AND model_id=? AND chunk_index=?`,[Number(pk),activeModel(),index]))?.[0];
+    if(!chunk)throw new Error("Requested chunk is not present in this indexed PDF");
+    const id=positionId(parent.session_id,"pdf",parent.work_key,`c${index}`),ts=now();
+    const hint=genericEvidenceHint(chunk.chunk_text||"");
+    await Zotero.DB.queryAsync(`INSERT OR IGNORE INTO ${RDB}.positions (position_id,session_id,source,work_key,library_key,item_key,title,chunk_index,page_number,paragraph_index,match_kind,preview,review_status,evidence_hint,evidence_priority,coverage_required,position_role,cluster_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[id,parent.session_id,"pdf",parent.work_key,parent.library_key,parent.item_key,parent.title,index,chunk.page_number??null,chunk.paragraph_index??null,"context-promotion",String(chunk.chunk_text||"").slice(0,500),"unreviewed",JSON.stringify(hint),hint.priority??50,1,"promoted-context-chunk",`context-${index}`,ts,ts]);
+    await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET coverage_required=1,position_role='promoted-context-chunk',updated_at=? WHERE position_id=?`,[ts,id]);
+    await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET status='reviewing',updated_at=? WHERE session_id=?`,[ts,parent.session_id]);
+    return{ok:true,sessionId:parent.session_id,positionId:id,workKey:parent.work_key,chunkIndex:index,pageNumber:chunk.page_number??null,next:"Read evidence_context for the promoted position, review it, then record a DIRECT fact only if the quote and value occur in this exact chunk."};
+  }
+
   async function reviewPosition(positionId, payload={}) {
     await ensureResearchSchema();
     const existing=(await Zotero.DB.queryAsync(`SELECT context_read_at FROM ${RDB}.positions WHERE position_id=?`,[positionId]))?.[0];if(!existing)throw new Error("Unknown position");
     if(!existing.context_read_at)throw new Error("Read evidence_context before reviewing this position");
     const allowedStatus=new Set(["reviewed","excluded","conflicting","unresolved","needs_context"]);
-    const status=allowedStatus.has(payload.reviewStatus)?payload.reviewStatus:"reviewed";
-    const scope=payload.evidenceScope||null, supports=payload.supportsQuestion||null, reason=payload.reason||null, level=num(payload.contextLevel,1,0,9);
+    if(!allowedStatus.has(payload.reviewStatus))throw new Error("reviewStatus must be an explicit valid decision");
+    const status=payload.reviewStatus,scope=String(payload.evidenceScope||"").trim()||null,supports=String(payload.supportsQuestion||"").trim()||null,reason=String(payload.reason||"").trim()||null,level=num(payload.contextLevel,1,0,9);
+    if(!["yes","partial","no","contradicts","unclear"].includes(supports))throw new Error("supportsQuestion must explicitly state yes, partial, no, contradicts, or unclear");
+    if(!reason)throw new Error("A brief reason is required for every review decision");
     const reviewedAt=now();
     await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET review_status=?,context_level=?,evidence_scope=?,supports_question=?,reason=?,evidence_json=?,listed_at=COALESCE(listed_at,?),updated_at=? WHERE position_id=?`,[status,level,scope,supports,reason,payload.evidence?JSON.stringify(payload.evidence):null,reviewedAt,reviewedAt,positionId]);
     const sid=await Zotero.DB.valueQueryAsync(`SELECT session_id FROM ${RDB}.positions WHERE position_id=?`,[positionId]);if(sid)await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET updated_at=? WHERE session_id=?`,[now(),sid]);
-    return {ok:true,positionId,reviewStatus:status,session: sid?await sessionLedger(sid):null};
+    return payload.compactResult?{ok:true,positionId,sessionId:sid,reviewStatus:status,supportsQuestion:supports}:{ok:true,positionId,reviewStatus:status,session:sid?await sessionLedger(sid):null};
   }
 
   async function verifyNoteSource(notePositionId,{query=null,aliases=[],limit=50}={}){
@@ -980,10 +1056,11 @@
     {name:"evidence_plan",description:"Non-mutating Query Contract v2 preflight. Supports quoted/+ MUST terms, - exclusions, {a|b} alias groups, structured must/should/alias groups, protected identifiers, cardinality estimates and surface-preservation audit. Use this before broad sweeps.",inputSchema:{type:"object",properties:planProps,required:["question"]}},
     {name:"evidence_research_start",description:"Preferred unified entry point. Starts the PDF Coverage Gate and a persistent LNE Survey together, then automatically promotes the first page of core paper-side note candidates into same-parent PDF verification. Preserves Unicode identifier surfaces and never invents ASCII aliases.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:{type:"object"},readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5},surveyPreset:{type:"string",enum:["quick","balanced","exhaustive","audit"]},surveyAnchors:{},surveyAxes:{},surveyMaxQueries:{type:"integer",minimum:1,maximum:20},surveyMaxPerQuery:{type:"integer",minimum:1,maximum:500},surveyHits:{type:"integer",minimum:1,maximum:8},surveyLexicalOnly:{type:"boolean"},promotionLimit:{type:"integer",minimum:1,maximum:50},verificationQuery:{type:"string"},verificationAliases:{type:"array",items:{type:"string"}}},required:["question"]}},
     {name:"evidence_sweep",description:"Start Coverage Gate v2. Exhaustiveness is defined over the hard Query Contract (MUST groups AND; aliases within a group OR; exclusions NOT). QUERY_EXHAUSTIVE clusters adjacent duplicate lexical hits into review units; semantic and LNE hits are navigation-only unless explicitly required/verified.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},includeLNE:{type:"boolean"},requireLNE:{type:"boolean"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:{type:"object"},readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5}},required:["question"]}},
-    {name:"evidence_positions",description:"Page evidence positions. scope=coverage (default) returns only gate-required evidence clusters; scope=navigation shows supplemental semantic/LNE/duplicate hits; scope=all is the audit view.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:1000},status:{type:"string"},scope:{type:"string",enum:["coverage","navigation","all"]}},required:["sessionId"]}},
+    {name:"evidence_positions",description:"Page evidence positions. Use compact=true for model context; nextOffset must be followed to null. scope=coverage (default) returns gate-required clusters; scope=navigation returns supplemental hits.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:1000},compact:{type:"boolean"},status:{type:"string"},scope:{type:"string",enum:["coverage","navigation","all"]}},required:["sessionId"]}},
     {name:"evidence_context",description:"Read sufficient surrounding context for one position. level 0=matched chunk, 1=±2 chunks/default, 2=±5, 3=±12; note positions use LNE trace with analogous expansion.",inputSchema:{type:"object",properties:{positionId:{type:"string"},level:{type:"integer",minimum:0,maximum:3}},required:["positionId"]}},
+    {name:"evidence_promote_context_chunk",description:"Promote a specific adjacent PDF chunk seen in evidence_context into the same session as a required review unit. Use when the exact quoted answer is in a neighbor of the matched chunk; then open and review the promoted position before recording a fact.",inputSchema:{type:"object",properties:{positionId:{type:"string"},chunkIndex:{type:"integer",minimum:0}},required:["positionId","chunkIndex"]}},
     {name:"evidence_document",description:"Page every indexed chunk of one coverage-candidate PDF. Required to exhaustion only for FULL_TEXT_CANDIDATES sessions.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},workKey:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:50}},required:["sessionId","workKey"]}},
-    {name:"evidence_review",description:"Record the decision for one evidence position after evidence_context. Recommended scopes: DIRECT_FACT, EXPERIMENT_RESULT, QUANTITATIVE_MEASUREMENT, SEQUENCE_DEFINITION, STRUCTURE_OBSERVATION, CONSTRUCT_DEFINITION, REGION_MAPPING, BINDING_RESULT, METHOD, AUTHOR_INTERPRETATION, BACKGROUND, INFERENCE.",inputSchema:{type:"object",properties:{positionId:{type:"string"},reviewStatus:{type:"string",enum:["reviewed","excluded","conflicting","unresolved","needs_context"]},contextLevel:{type:"integer"},evidenceScope:{type:"string"},supportsQuestion:{type:"string",enum:["yes","partial","no","contradicts","unclear"]},reason:{type:"string"},evidence:{type:"object"}},required:["positionId","reviewStatus"]}},
+    {name:"evidence_review",description:"Record an explicit decision after evidence_context. supportsQuestion and a short reason are mandatory. Recommended scopes: DIRECT_FACT, EXPERIMENT_RESULT, QUANTITATIVE_MEASUREMENT, SEQUENCE_DEFINITION, STRUCTURE_OBSERVATION, CONSTRUCT_DEFINITION, REGION_MAPPING, BINDING_RESULT, METHOD, AUTHOR_INTERPRETATION, BACKGROUND, INFERENCE.",inputSchema:{type:"object",properties:{positionId:{type:"string"},reviewStatus:{type:"string",enum:["reviewed","excluded","conflicting","unresolved","needs_context"]},contextLevel:{type:"integer"},evidenceScope:{type:"string"},supportsQuestion:{type:"string",enum:["yes","partial","no","contradicts","unclear"]},reason:{type:"string"},evidence:{type:"object"}},required:["positionId","reviewStatus","supportsQuestion","reason"]}},
     {name:"evidence_fact",description:"Create a typed FactRecord from a context-read position. DIRECT facts require an original PDF locator and a value occurring literally in the verified sourceQuote. Derived or converted values must be INFERRED and cannot close EXACT slots.",inputSchema:{type:"object",properties:{positionId:{type:"string"},slot:{type:"string"},entity:{type:"string"},value:{type:["string","number"]},valueType:{type:"string",enum:["naming_equivalence","construct_boundary","structure_resolved_range","secondary_structure_range","functional_motif","mutation_site","hdx_peptide","sequence","sequence_alignment","homology_mapping","quantitative_measurement","mechanism","other","exact_value","residue_range","binding_or_activity_value"]},unit:{type:"string"},numbering:{type:"string"},evidenceStatus:{type:"string",enum:["DIRECT","INFERRED","SECONDARY"]},sourceQuote:{type:"string"},locator:{type:"object"},notes:{type:"string"}},required:["positionId","slot","value","valueType","evidenceStatus","sourceQuote"]}},
     {name:"evidence_resolve_conflict",description:"Adjudicate a DIRECT conflict by selecting a source-backed FactRecord, citing another context-read original PDF passage whose quote explicitly supports that value, and documenting the reason. Older unanchored resolutions remain blocking.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},conflictKey:{type:"string"},selectedFactId:{type:"string"},resolutionPositionId:{type:"string"},resolutionQuote:{type:"string"},reason:{type:"string"}},required:["sessionId","conflictKey","selectedFactId","resolutionPositionId","resolutionQuote","reason"]}},
     {name:"evidence_verify_note",description:"Search only the same Zotero parent PDF for a navigation-note claim. Located PDF passages are promoted into the coverage universe and must be reviewed.",inputSchema:{type:"object",properties:{positionId:{type:"string"},query:{type:"string"},aliases:{type:"array",items:{type:"string"}},limit:{type:"integer",minimum:1,maximum:200}},required:["positionId"]}},
@@ -1028,8 +1105,8 @@
       if(!Zotero.ZotQueryLNE?.api?.callTool)throw new Error("LNE Native tool layer unavailable");
       return Zotero.ZotQueryLNE.api.callTool(name,a||{});
     }
-    if(name==="quick_search")return{results:await Zotero.ZotQuery.api.search(a.query,{topK:num(a.max_results,10,1,100),minSimilarity:num(a.min_similarity,.3,0,1)})};
-    if(name==="research_health")return health();if(name==="evidence_plan")return planPublic(await planEvidenceQuery(a));if(name==="evidence_research_start")return startOrchestratedResearch(a);if(name==="evidence_sweep")return runSweep(a);if(name==="evidence_positions")return positions(a.sessionId,a);if(name==="evidence_context")return positionContext(a.positionId,{level:a.level??1});if(name==="evidence_document")return documentRead(a.sessionId,a.workKey,a);if(name==="evidence_review")return reviewPosition(a.positionId,a);if(name==="evidence_fact")return recordFact(a);if(name==="evidence_resolve_conflict")return resolveFactConflict(a.sessionId,a);if(name==="evidence_verify_note")return verifyNoteSource(a.positionId,a);if(name==="evidence_promote_notes")return promoteSurveyNotes(a.sessionId,a);if(name==="evidence_session")return sessionLedger(a.sessionId);if(name==="evidence_finalize")return finalize(a.sessionId);throw new Error(`Unknown tool: ${name}`);
+    if(name==="quick_search"){const threshold=num(a.min_similarity,.3,0,1),results=await Zotero.ZotQuery.api.search(a.query,{topK:num(a.max_results,10,1,100),minSimilarity:threshold});return{query:a.query,minSimilarity:threshold,results,emptyResultGuidance:results.length?null:"No semantic discovery hits at this threshold. This is not evidence of absence; use evidence_plan for literal PDF coverage, check indexing, and consider a lower semantic threshold."};}
+    if(name==="research_health")return health();if(name==="evidence_plan")return planPublic(await planEvidenceQuery(a));if(name==="evidence_research_start")return startOrchestratedResearch(a);if(name==="evidence_sweep")return runSweep(a);if(name==="evidence_positions")return positions(a.sessionId,{...a,compact:a.compact!==false});if(name==="evidence_context")return positionContext(a.positionId,{level:a.level??1});if(name==="evidence_promote_context_chunk")return promoteContextChunk(a.positionId,a);if(name==="evidence_document")return documentRead(a.sessionId,a.workKey,a);if(name==="evidence_review")return reviewPosition(a.positionId,{...a,compactResult:true});if(name==="evidence_fact")return recordFact(a);if(name==="evidence_resolve_conflict")return resolveFactConflict(a.sessionId,a);if(name==="evidence_verify_note")return verifyNoteSource(a.positionId,a);if(name==="evidence_promote_notes")return promoteSurveyNotes(a.sessionId,a);if(name==="evidence_session")return sessionLedger(a.sessionId);if(name==="evidence_finalize")return finalize(a.sessionId);throw new Error(`Unknown tool: ${name}`);
   }
   const MCP=Endpoint(["POST"], async req=>{if(!authorized(req))return[401,"application/json",JSON.stringify({jsonrpc:"2.0",id:null,error:{code:-32001,message:"Unauthorized: local Bearer token required"}})];const b=req.data||{},id=b.id;if(b.method==="initialize")return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,result:{protocolVersion:b.params?.protocolVersion||"2025-06-18",capabilities:{tools:{listChanged:false}},serverInfo:{name:"ZotQuery MCP",version:VERSION}}})];if(b.method==="ping")return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,result:{}})];if(b.method==="tools/list")return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,result:{tools:allTools()}})];if(b.method==="tools/call"){try{return mcpResult(id,await callTool(b.params?.name,b.params?.arguments||{}));}catch(e){return mcpResult(id,{error:e.message},true);}}return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,error:{code:-32601,message:"Method not found"}})];});
 
@@ -1037,7 +1114,7 @@
     "/zotquery/health":Health,"/zotquery/lexical":Lexical,"/zotquery/plan":Plan,"/zotquery/context":Context,"/zotquery/sweep":Sweep,"/zotquery/session":Session,"/zotquery/positions":Positions,"/zotquery/document":Document,"/zotquery/review":Review,"/zotquery/fact":Fact,"/zotquery/resolve":Resolve,"/zotquery/verify-note":VerifyNote,"/zotquery/finalize":Finalize,"/zotquery/mcp":MCP
   };
 
-  async function startup(){if(started)return;ensureAuthToken();await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
+  async function startup(){if(started)return;ensureAuthToken();await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,toolDefinitions:allTools,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
   async function shutdown(){for(const p of ENDPOINTS)try{delete Zotero.Server.Endpoints[p];}catch{}try{const l=await Zotero.DB.queryAsync("PRAGMA database_list");if(l?.some(r=>r.name===RDB))await Zotero.DB.queryAsync(`DETACH DATABASE ${RDB}`);}catch{}delete Zotero.ZotQueryResearch;started=false;log("stopped");}
 
   _globalThis.ZotQueryResearchBootstrap={startup,shutdown,_defaultFactRequest:defaultFactRequest};

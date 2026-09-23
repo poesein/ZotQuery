@@ -22,6 +22,16 @@
     #zotquery-pref-mcpServer, #zotquery-mcpserver-info, #zotquery-mcpserver-warning { display:none !important; }
     @media (max-width:850px) { .lne-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media (prefers-color-scheme:dark) { #zotquery-preferences { --lne-accent:#f287ab; --lne-green:#7bd88b; --lne-red:#ff8989; } }
+    #zotquery-group-output-model .model-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px 14px; margin:12px 0; }
+    #zotquery-group-output-model .field { display:block; min-width:0; }
+    #zotquery-group-output-model .field > span { display:block; margin-bottom:4px; font-size:12px; }
+    #zotquery-group-output-model input, #zotquery-group-output-model select { box-sizing:border-box; width:100%; min-width:0; padding:6px 8px; font:inherit; color:FieldText; background:Field; border:1px solid var(--material-border,#ccc); border-radius:5px; }
+    #zotquery-group-output-model .inline-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    #zotquery-group-output-model button { font:inherit; padding:5px 10px; cursor:pointer; }
+    #zotquery-group-output-model .model-actions { display:flex; flex-wrap:wrap; gap:7px; margin:9px 0; }
+    #zotquery-group-output-model .callout { border-top:1px solid var(--material-border,#ddd); padding-top:12px; }
+    #template-state { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; margin:6px 0; }
+    @media(max-width:600px) { #zotquery-group-output-model .model-grid { grid-template-columns:1fr; } }
   ]]></html:style>
 
   <html:div class="lne-hero">
@@ -106,8 +116,25 @@
     </html:div>
   </html:details>
 
+  <html:details class="zotquery-prefs-group" id="zotquery-group-output-model" open="">
+    <html:summary>输出大模型与 Markdown 模板</html:summary>
+    <html:p class="lne-note">模型通过内置工具检索、阅读和核验证据，再生成回答。配置只需在此保存一次。</html:p>
+    <html:div class="model-grid">
+      <html:label class="field"><html:span>服务商</html:span><html:select id="model-provider"></html:select></html:label>
+      <html:label class="field"><html:span>API Base URL</html:span><html:input id="model-base-url" type="url"/></html:label>
+      <html:label class="field"><html:span>模型名称</html:span><html:input id="model-name" type="text"/></html:label>
+      <html:label class="field"><html:span>API Key（留空保留原值）</html:span><html:input id="model-api-key" type="password" autocomplete="off"/></html:label>
+      <html:label class="field"><html:span>模型思考强度</html:span><html:select id="model-reasoning"><html:option value="auto">自动（不附加专有参数）</html:option><html:option value="none">关闭 / 最低</html:option><html:option value="low">低</html:option><html:option value="medium">中</html:option><html:option value="high">高</html:option></html:select></html:label>
+      <html:div class="inline-grid"><html:label class="field"><html:span>最大工具轮数</html:span><html:input id="model-max-steps" type="number" min="2" max="100"/></html:label><html:label class="field"><html:span>超时（秒）</html:span><html:input id="model-timeout" type="number" min="10" max="1800"/></html:label></html:div>
+    </html:div>
+    <html:div class="model-actions"><html:button id="model-save" type="button">保存配置</html:button><html:button id="model-test" type="button">测试连接</html:button></html:div>
+    <html:div id="model-state" class="lne-note">读取中…</html:div>
+    <html:div class="callout"><html:strong>Markdown 输出模板（可选）</html:strong><html:p class="lne-note">将你导入的 .md 全文交给模型，按其结构回答；未导入时自由回答。不附带默认模板。</html:p><html:div id="template-state">读取中…</html:div><html:div class="model-actions"><html:button id="choose-template" type="button">导入 .md 模板</html:button><html:button id="reset-template" type="button">清除模板选择</html:button></html:div></html:div>
+    <html:div id="model-settings-status" class="lne-note" role="status" aria-live="polite"></html:div>
+  </html:details>
+
   <html:details class="zotquery-prefs-group" id="zotquery-group-models" open="">
-    <html:summary>共享向量模型</html:summary>
+    <html:summary>共享向量模型（BGE 等）</html:summary>
     <html:p class="lne-note">PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。验证为同一模型的地址切换可复用现有索引；真正更换模型时需补建向量，旧向量不会被破坏。</html:p>
     <html:div class="lne-row">
       <html:label for="zotquery-pref-embeddingModel">当前模型</html:label>

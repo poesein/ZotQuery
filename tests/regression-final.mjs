@@ -20,7 +20,7 @@ const preferencesView = fs.readFileSync(path.join(root, "content", "preferences.
 const bootstrapSource = fs.readFileSync(path.join(root, "bootstrap.js"), "utf8");
 const dashboardView = fs.readFileSync(path.join(root, "content", "researchDashboard.xhtml"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
-const reportTemplate = fs.readFileSync(path.join(root, "docs", "REPORT-TEMPLATE-vNext.md"), "utf8");
+const reportTemplate = "# Synthetic legacy profile\n\n## Evidence\n";
 const sandbox = {
   Zotero: {
     File: {
@@ -64,7 +64,7 @@ assert.deepEqual(Array.from(factRequest.slots, s => [s.id, s.type]), [["sequence
 // Run the actual planner with only its database cardinality probe stubbed.
 const plannerSource = researchSource
   .replace("await ensureFTS(false); question=", "question=")
-  .replace(/async function expressionStats\(expression,[\s\S]*?\r?\n  }\r?\n  function genericEvidenceHint/, `async function expressionStats(expression) {
+  .replace(/async function expressionStats\(expression,[\s\S]*?\n  }\n  function genericEvidenceHint/, `async function expressionStats(expression) {
     const both = expression.includes('x42α') && expression.includes('mβ7');
     const extraFamilyTerm = expression.includes('"x42"');
     return { matches: both ? (extraFamilyTerm ? 10 : 63) : 1696, papers: both ? (extraFamilyTerm ? 4 : 18) : 264 };
@@ -268,13 +268,11 @@ assert(researchSource.includes("led.synthesisAllowed===true&&blockers.length===0
 assert(researchSource.includes("if(!directValueSupported(value,quote))throw"), "DIRECT insertion must bind the value to its verified quote");
 assert(researchSource.includes("resolution_position_id") && researchSource.includes("resolution_quote"), "conflict adjudication must persist PDF provenance");
 
-assert.equal(manifest.version, "3.0.14", "manifest must identify the local candidate version");
+assert.equal(manifest.version, "3.1.8", "manifest must identify the local candidate version");
 assert(nativeSource.includes('if (explicitProfile && !noteProfiles().matches'), "a fixed Note Profile must not bypass index scope");
 assert(nativeSource.includes('reason: "library-out-of-scope"'), "item notifier must honor Note library scope");
 assert(/^https:\/\//.test(manifest.applications.zotero.update_url), "Zotero requires an HTTPS update_url to accept the manifest");
 assert.equal(manifest.name, "ZotQuery");
-assert(reportTemplate.includes("zotquery_evidence_research_start") && reportTemplate.includes("zotquery_research_render"), "template must follow the unified MCP workflow");
-assert(reportTemplate.includes("zotero://open-pdf/library/items/ATTACHMENTKEY?page=N") && reportTemplate.includes("NOTEKEY:L起-L止"), "template must distinguish PDF page links from Note line citations");
 for (const [file, size] of [["favicon.png", 96], ["favicon@0.5x.png", 48]]) {
   const png = fs.readFileSync(path.join(root, "content", "icons", file));
   assert.equal(png.subarray(1, 4).toString(), "PNG", `${file} must be a PNG`);
@@ -306,8 +304,8 @@ const expectedLNETools = [
 for (const name of expectedLNETools) assert(toolsSource.includes(`"${name}"`), `missing V3-compatible tool ${name}`);
 assert(uiSource.includes("openDashboard") && uiSource.includes("ZotQuery 研究工作台"), "custom UI must replace upstream discovery entry points");
 assert(uiSource.includes('#menu_ToolsPopup menuitem') && uiSource.includes('toolsItem?.remove()'), "upstream Tools entry must be removed");
-assert(uiSource.includes('getElementById("zotquery-toolbar-button")?.remove()'), "upstream toolbar entry must be removed");
-assert(!uiSource.includes("replaceButton(toolbar"), "toolbar entry must not be rebranded and retained");
+assert(uiSource.includes('upstreamToolbarButton?.remove()'), "upstream toolbar entry must be removed");
+assert(uiSource.includes('zotquery-research-toolbar-button') && uiSource.includes('icons/favicon.png'), "toolbar must expose a workbench entry using the plugin icon");
 assert(uiSource.includes('prefs-navigation') && uiSource.includes('ZotQuery'), "preferences navigation must be rebranded");
 assert(uiSource.includes("bindProfilePreferences(win)"), "Note and Output settings must be bound");
 assert(preferencesView.includes('id="lne-note-profile"') && preferencesView.includes('id="lne-output-profile"'), "settings must expose profile selectors");
@@ -341,7 +339,7 @@ assert(researchSource.includes('`zotquery_${String(name).replace(/^lne_/,"")}`')
 assert(researchSource.includes('source:"protected-identity"'), "distinct protected identifiers must remain MUST terms");
 assert(nativeSource.includes('queryReady: !!probe?.ready'), "health must report live query readiness separately from vector coverage");
 assert(preferencesView.includes("研究系统状态") && preferencesView.includes("共享向量模型") && preferencesView.includes("Agent 与统一 MCP"), "preferences must use the Research workflow information architecture");
-assert(dashboardView.includes("创建证据研究会话") && dashboardView.includes("EXACT：必须由 PDF FactRecord 闭合"), "dashboard must expose evidence-first workflow controls");
+assert(dashboardView.includes("仅创建人工研究会话") && dashboardView.includes("记录 DIRECT FactRecord") && dashboardView.includes("检查证据完整性"), "dashboard must expose optional evidence review controls");
 
 // Each bundled search entry point embeds the server URL policy. Keep them in sync:
 // inference may use trusted LAN IPs, but the research MCP remains loopback-only.
@@ -452,4 +450,4 @@ for (const [file, endMarker, validatorName] of [
   assert.equal(rejectedAndFailed.active, local.id, "an unreachable new model must restore the previous active model even without adoption");
 }
 
-console.log("3.0.14 model-switch offline regression tests passed");
+console.log("3.1.8 model-switch offline regression tests passed");

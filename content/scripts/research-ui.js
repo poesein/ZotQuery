@@ -5,7 +5,7 @@
 "use strict";
 
 ((global) => {
-  const VERSION = "3.0.14";
+  const VERSION = "3.1.8";
   let dashboardWindow = null;
   let observer = null;
   let refreshTimer = null;
@@ -77,7 +77,7 @@
       dashboardWindow = Zotero.getMainWindow().openDialog(
         "chrome://zotquery/content/researchDashboard.xhtml",
         "zotquery-lne-research-dashboard",
-        "chrome,centerscreen,resizable,dialog=no,width=980,height=720",
+        "chrome,centerscreen,resizable,dialog=no,width=1180,height=840",
         { query: String(options.query || "") }
       );
       return dashboardWindow;
@@ -101,12 +101,53 @@
     return fresh;
   }
 
+  function ensureToolbarStyle(doc) {
+    if (doc.getElementById("zotquery-research-toolbar-style")) return;
+    const style = doc.createElementNS("http://www.w3.org/1999/xhtml", "style");
+    style.id = "zotquery-research-toolbar-style";
+    style.textContent = `
+      #zotquery-research-toolbar-button {
+        box-sizing: border-box !important;
+        width: 28px !important; min-width: 28px !important; max-width: 28px !important;
+        height: 28px !important; min-height: 28px !important; max-height: 28px !important;
+        padding: 5px !important; margin-block: 0 !important;
+        flex: 0 0 auto !important; align-self: center !important;
+        list-style-image: url("chrome://zotquery/content/icons/favicon.png") !important;
+      }
+      #zotquery-research-toolbar-button .toolbarbutton-icon {
+        width: 16px !important; min-width: 16px !important; max-width: 16px !important;
+        height: 16px !important; min-height: 16px !important; max-height: 16px !important;
+        margin: 0 !important; padding: 0 !important; object-fit: contain !important;
+      }
+      #zotquery-research-toolbar-button .toolbarbutton-text { display: none !important; }
+    `;
+    doc.documentElement.appendChild(style);
+  }
+
   function customizeMainWindow(win = Zotero.getMainWindow()) {
     const doc = win?.document;
     if (!doc) return;
+    ensureToolbarStyle(doc);
 
-    // Remove the upstream toolbar entry; keep context-menu and settings access.
-    doc.getElementById("zotquery-toolbar-button")?.remove();
+    // Replace the upstream search shortcut with a dedicated workbench entry.
+    const upstreamToolbarButton = doc.getElementById("zotquery-toolbar-button");
+    if (!doc.getElementById("zotquery-research-toolbar-button")) {
+      const button = upstreamToolbarButton?.cloneNode(false)
+        || (doc.createXULElement ? doc.createXULElement("toolbarbutton") : doc.createElement("toolbarbutton"));
+      button.id = "zotquery-research-toolbar-button";
+      button.setAttribute("label", "研究工作台");
+      button.setAttribute("tooltiptext", "打开 ZotQuery 研究工作台");
+      button.setAttribute("image", "chrome://zotquery/content/icons/favicon.png");
+      button.setAttribute("class", `${button.getAttribute("class") || "toolbarbutton-1"} zotquery-research-toolbar-button`.trim());
+      button.style.listStyleImage = 'url("chrome://zotquery/content/icons/favicon.png")';
+      for (const attr of ["command", "oncommand", "mousedown", "onmousedown"]) button.removeAttribute(attr);
+      button.addEventListener("click", () => openDashboard());
+      const toolbar = upstreamToolbarButton?.parentNode
+        || doc.getElementById("zotero-items-toolbar")
+        || doc.querySelector("toolbar");
+      if (toolbar) toolbar.insertBefore(button, upstreamToolbarButton?.nextSibling || null);
+    }
+    upstreamToolbarButton?.remove();
 
     const contextIds = ["zotquery-find-similar", "zotquery-open-dialog"];
     const first = doc.getElementById(contextIds[0]);
@@ -363,6 +404,7 @@
       } catch (e) { if (status) status.textContent = e?.message || String(e); }
     });
     bindProfilePreferences(win);
+    Zotero.ZotQueryModelPreferences?.bind(win).catch(error => Zotero.logError(error));
     localizePreferences(win);
     refreshPreferenceHealth(win);
   }
@@ -393,6 +435,10 @@
     refreshTimer = null;
     try { dashboardWindow?.close(); } catch (_) {}
     dashboardWindow = null;
+    for (const win of Zotero.getMainWindows?.() || [Zotero.getMainWindow()]) {
+      try { win?.document?.getElementById("zotquery-research-toolbar-button")?.remove(); } catch (_) {}
+      try { win?.document?.getElementById("zotquery-research-toolbar-style")?.remove(); } catch (_) {}
+    }
     delete Zotero.ZotQueryResearchUI;
   }
 

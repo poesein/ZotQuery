@@ -3,9 +3,9 @@
     "zotquery@poesein.github.io": {
       "updates": [
         {
-          "version": "3.0.14",
-          "update_link": "https://github.com/poesein/ZotQuery/releases/download/v3.0.14/ZotQuery-3.0.14.xpi",
-          "update_hash": "sha256:5fc385299d928f8fba7cf7540fcacc66feb16661545611052573251967d5d35b",
+          "version": "3.1.8",
+          "update_link": "https://github.com/poesein/ZotQuery/releases/download/v3.1.8/ZotQuery-3.1.8.xpi",
+          "update_hash": "sha256:d9cf89ff008b0bb5c2a5b2a64f6d13a25b109ca7e5c9317eaeedc0cc9cd7fd90",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0",

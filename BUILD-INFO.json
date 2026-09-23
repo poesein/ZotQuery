@@ -1,6 +1,6 @@
 {
   "product": "ZotQuery",
-  "version": "3.0.14",
+  "version": "3.1.8",
   "upstream": "ZotSeek 1.21.2",
   "upstream_sha256": "7daaf964b1f11da274f201a1671dc82560add264f4b56f0b602c31b067ce2e69",
   "plugin_id": "zotquery@poesein.github.io",
@@ -11,7 +11,7 @@
   "mcpAuth": "loopback-bearer-required",
   "directFactValidation": "verbatim-bounded-value-plus-affirmative-review",
   "conflictResolution": "independent-pdf-position-and-quote",
-  "mcp_tools": 43,
+  "mcp_tools": 44,
   "domain_core": "generic-no-research-direction-presets",
   "bundled_note_profiles": ["generic", "strawberry-vnext"],
   "identifier_policy": "order-significant; no automatic ASCII-degradation aliases",
@@ -19,5 +19,20 @@
   "lneNativeMilestone": "stable-native-unified-research",
   "embeddingContract": "one active ZotQuery Search model shared by PDF chunks and Note segments; verified equivalent endpoints retain the indexed cache identity",
   "legacyLNEFallback": false,
-  "persistentLNESurveys": true
+  "persistentLNESurveys": true,
+  "researchWorkbench": "single-column-question-answer-evidence; compact progress; optional diagnostics",
+  "answerViewer": "rendered Markdown by default; editable source toggle; original Markdown export",
+  "markdownParser": "marked 17.0.5 lexer; allowlisted DOM construction; no raw HTML execution or automatic remote images",
+  "modelConfigurationUI": "ZotQuery preferences only; existing credentials and settings retained",
+  "oneClickResearch": "prepare evidence session automatically, then invoke model tool research and writing; no full-library rebuild",
+  "toolbarWorkbenchEntry": true,
+  "llmApiBoundary": "enabled-in-process-tool-calling-agent",
+  "llmProviders": ["ollama", "deepseek", "openai", "anthropic", "gemini", "qwen", "openai-compatible"],
+  "llmSecrets": "Zotero login manager; never ordinary preferences",
+  "llmCredentialWrites": "await addLoginAsync for new keys; modifyLogin in place for replacements; UI awaits persistence",
+  "llmGatePolicy": "persisted gate controls verified vs clearly labeled limited model answer; audit never replaces answer",
+  "llmAnswerFlow": "tool research with bounded continuation, then a separate model writing pass using source evidence; audit panel and answer export are separate",
+  "llmMarkdownTemplate": "optional user-imported .md file; template-free generation supported; no bundled Markdown output template; untrusted format-only context",
+  "llmReasoningEffort": ["auto", "none", "low", "medium", "high"],
+  "embeddingAndOutputModels": "separate configuration and cache lifecycles"
 }
