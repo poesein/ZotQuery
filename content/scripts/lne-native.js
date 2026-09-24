@@ -1,5 +1,5 @@
 /**
- * ZotQuery Core 3.1.8 — note parsing and shared semantic retrieval.
+ * ZotQuery Core 3.1.17 — note parsing and shared semantic retrieval.
  *
  * Scope:
  * - Zotero Notes are the source of truth (no exported Markdown directory)
@@ -16,7 +16,7 @@
 (function (global) {
   "use strict";
 
-  const VERSION = "3.1.8";
+  const VERSION = "3.1.17";
   const DB_ALIAS = "zotquerylne";
   const DB_FILE = "zotquery-lne.sqlite";
   const SCHEMA_VERSION = 3;

@@ -48,4 +48,4 @@ result = 0; file = null;
 await click("save-report");
 assert.equal(writes.length, 2, "missing path must not cause a write");
 assert.match(node("notice").textContent, /未返回有效路径/);
-console.log("3.1.8 file picker import/export string, nsIFile, replacement and cancellation regressions passed");
+console.log("3.1.17 file picker import/export string, nsIFile, replacement and cancellation regressions passed");

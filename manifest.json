@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ZotQuery",
-  "version": "3.1.8",
+  "version": "3.1.17",
   "description": "ZotQuery: a unified PDF and Note research workbench with evidence gates and Markdown output.",
   "author": "José Fernandes; ZotQuery integration",
   "homepage_url": "https://github.com/poesein/ZotQuery",

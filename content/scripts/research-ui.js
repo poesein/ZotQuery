@@ -5,7 +5,7 @@
 "use strict";
 
 ((global) => {
-  const VERSION = "3.1.8";
+  const VERSION = "3.1.17";
   let dashboardWindow = null;
   let observer = null;
   let refreshTimer = null;
@@ -17,7 +17,7 @@
     "PDF 与笔记检索、证据审阅、Survey 和研究输出。": "PDF and note search, evidence review, surveys, and research output.",
     "研究系统状态": "Research status", "整体": "Overall", "PDF 索引": "PDF index", "阅读笔记": "Indexed notes",
     "Note 向量覆盖": "Note vector coverage", "共享模型合同": "Shared-model contract", "PDF 与笔记共用模型": "Model shared by PDFs and notes",
-    "检查中…": "Checking…", "刷新状态": "Refresh status", "打开研究工作台": "Open research workspace",
+    "检查中…": "Checking…", "刷新状态": "Refresh status", "打开研究台": "Open research workspace",
     "笔记索引": "Note indexing", "文库范围": "Library scope", "我的文库": "My Library", "全部文库": "All libraries",
     "笔记范围": "Note scope", "兼容旧版精读笔记": "Legacy reading notes", "全部笔记": "All notes",
     "按标题或内容字面量": "Match title or content", "匹配字面量": "Match text", "自动跟踪笔记变更": "Track note changes automatically",
@@ -135,8 +135,8 @@
       const button = upstreamToolbarButton?.cloneNode(false)
         || (doc.createXULElement ? doc.createXULElement("toolbarbutton") : doc.createElement("toolbarbutton"));
       button.id = "zotquery-research-toolbar-button";
-      button.setAttribute("label", "研究工作台");
-      button.setAttribute("tooltiptext", "打开 ZotQuery 研究工作台");
+      button.setAttribute("label", "研究台");
+      button.setAttribute("tooltiptext", "打开 ZotQuery 研究台");
       button.setAttribute("image", "chrome://zotquery/content/icons/favicon.png");
       button.setAttribute("class", `${button.getAttribute("class") || "toolbarbutton-1"} zotquery-research-toolbar-button`.trim());
       button.style.listStyleImage = 'url("chrome://zotquery/content/icons/favicon.png")';
@@ -148,12 +148,18 @@
       if (toolbar) toolbar.insertBefore(button, upstreamToolbarButton?.nextSibling || null);
     }
     upstreamToolbarButton?.remove();
+    const workbenchButton = doc.getElementById("zotquery-research-toolbar-button");
+    if (workbenchButton) {
+      const ready = !!(Zotero.ZotQueryResearch && Zotero.ZotQueryModelAgent && Zotero.ZotQueryHistory);
+      workbenchButton.disabled = !ready;
+      workbenchButton.setAttribute("tooltiptext", ready ? "打开 ZotQuery 研究台" : "ZotQuery 正在初始化研究台…");
+    }
 
     const contextIds = ["zotquery-find-similar", "zotquery-open-dialog"];
     const first = doc.getElementById(contextIds[0]);
     if (first && first.getAttribute("data-lne-ui") !== "3") {
       const fresh = replaceButton(first, {
-        label: "ZotQuery 研究工作台",
+        label: "ZotQuery 研究台",
         tooltip: "打开统一 PDF + Note 研究入口",
         onCommand: () => openDashboard(),
       });
@@ -244,7 +250,6 @@
     const doc = win?.document;
     if (!doc) return;
     const noteAPI = Zotero.ZotQueryNoteProfiles;
-    const outputAPI = Zotero.ZotQueryOutputProfiles;
     const fill = (id, choices, selected) => {
       const menu = doc.getElementById(id);
       const popup = menu?.querySelector("menupopup");
@@ -259,7 +264,6 @@
       menu.value = selected;
     };
     const noteStatus = doc.getElementById("lne-note-profile-status");
-    const outputStatus = doc.getElementById("lne-output-profile-status");
     if (noteAPI) {
       const active = noteAPI.active() || "";
       fill("lne-note-profile", [{value:"",label:uiText("自动识别（通用及兼容格式）", "Auto-detect (generic and compatible formats)")}, ...noteAPI.list().map(p => ({value:p.id,label:`${p.name} [${p.source}]`}))], active);
@@ -270,11 +274,6 @@
       doc.getElementById("lne-note-title-pattern").value = String(Zotero.Prefs.get("zotquery.lneNative.titlePattern", true) || "");
       noteStatus.textContent = uiText(`当前：${active || "自动识别"}；笔记范围：${scope}。`, `Current: ${active || "auto-detect"}; note scope: ${scope}.`);
     } else noteStatus.textContent = uiText(`Note Profile 未启动${Zotero.ZotQueryStartupErrors?.lne ? `：${Zotero.ZotQueryStartupErrors.lne}` : ""}`, `Note Profile unavailable${Zotero.ZotQueryStartupErrors?.lne ? `: ${Zotero.ZotQueryStartupErrors.lne}` : ""}`);
-    if (outputAPI) {
-      const selected = String(Zotero.Prefs.get("zotquery.outputProfile", true) || "standard");
-      fill("lne-output-profile", outputAPI.list().map(p => ({value:p.id,label:`${p.name} [${p.source}]`})), outputAPI.get(selected) ? selected : "standard");
-      outputStatus.textContent = uiText(`默认 ${selected}。`, `Default: ${selected}.`);
-    } else outputStatus.textContent = uiText(`Output Profile 未启动${Zotero.ZotQueryStartupErrors?.research ? `：${Zotero.ZotQueryStartupErrors.research}` : ""}`, `Output Profile unavailable${Zotero.ZotQueryStartupErrors?.research ? `: ${Zotero.ZotQueryStartupErrors.research}` : ""}`);
   }
 
   function bindProfilePreferences(win) {
@@ -330,37 +329,17 @@
         status("lne-note-profile-import-status", uiText(`已导入 ${installed.id}；如需启用，请在上方选择并应用。`, `Imported ${installed.id}. Select it above and save to activate.`));
       } catch (e) { status("lne-note-profile-import-status", e?.message || String(e), true); }
     });
-    doc.getElementById("lne-output-profile-save")?.addEventListener("command", () => {
-      try {
-        const id = String(doc.getElementById("lne-output-profile").value || "");
-        if (!Zotero.ZotQueryOutputProfiles?.get(id)) throw new Error(uiText("输出配置不存在", "Output profile not found"));
-        Zotero.Prefs.set("zotquery.outputProfile", id, true);
-        refreshProfilePreferences(win);
-        status("lne-output-profile-status", uiText(`默认输出已设为 ${id}。`, `Default output set to ${id}.`));
-      } catch (e) { status("lne-output-profile-status", e?.message || String(e), true); }
-    });
-    doc.getElementById("lne-output-profile-validate")?.addEventListener("command", () => {
-      try { const result = Zotero.ZotQueryOutputProfiles.validate(parsed("lne-output-profile-json")); status("lne-output-profile-import-status", result.valid ? uiText("Output Profile JSON 校验通过。", "Output Profile JSON is valid.") : result.errors.join("; "), !result.valid); }
-      catch (e) { status("lne-output-profile-import-status", e?.message || String(e), true); }
-    });
-    doc.getElementById("lne-output-profile-install")?.addEventListener("command", async () => {
-      try {
-        const value = parsed("lne-output-profile-json");
-        const result = Zotero.ZotQueryOutputProfiles.validate(value);
-        if (!result.valid) throw new Error(result.errors.join("；"));
-        if (!confirm(uiText(`确认导入 Output Profile「${value.name}」？必需的研究合同与门禁字段会保留。`, `Import Output Profile “${value.name}”? Required contract and gate sections will remain.`))) return;
-        const installed = await Zotero.ZotQueryOutputProfiles.installCustom(value, {confirmed:true});
-        refreshProfilePreferences(win);
-        status("lne-output-profile-import-status", uiText(`已导入 ${installed.id}；可在上方设为默认格式。`, `Imported ${installed.id}. You can select it as the default above.`));
-      } catch (e) { status("lne-output-profile-import-status", e?.message || String(e), true); }
-    });
     refreshProfilePreferences(win);
   }
 
   function onPrefsLoad(win) {
     const doc = win?.document;
     const root = doc?.getElementById("zotquery-preferences");
-    if (!root || root.getAttribute("data-lne-bound") === "1") return;
+    if (!root) return;
+    if (root.getAttribute("data-lne-bound") === "1") {
+      Zotero.ZotQueryModelPreferences?.bindVision(win, "model-vision", "model-vision-state");
+      return;
+    }
     root.setAttribute("data-lne-bound", "1");
     const navigation = doc.getElementById("prefs-navigation");
     if (navigation) {
@@ -409,7 +388,7 @@
     refreshPreferenceHealth(win);
   }
 
-  function onPrefsUnload() {}
+  function onPrefsUnload(win) { Zotero.ZotQueryModelPreferences?.unbindVision(win); }
 
   async function startup() {
     customizeMainWindow();
@@ -442,7 +421,15 @@
     delete Zotero.ZotQueryResearchUI;
   }
 
-  const api = { version: VERSION, startup, shutdown, openDashboard, customizeMainWindow, onPrefsLoad, onPrefsUnload, health, syncNotes };
+  function openSettings() {
+    // Zotero assigns a generated pane ID. An extension ID is not a pane ID.
+    const panes = (Zotero.PreferencePanes?.pluginPanes || []).filter(p =>
+      p.pluginID === "zotquery@poesein.github.io" && !p.parent &&
+      /(?:^|\/)content\/preferences\.xhtml(?:[?#]|$)/.test(p.src || ""));
+    if (panes.length !== 1 || !panes[0].id) throw new Error("ZotQuery 设置页尚未注册完成，请稍后重试");
+    return Zotero.Utilities.Internal.openPreferences(panes[0].id, {scrollTo:"#zotquery-group-output-model"});
+  }
+  const api = { version: VERSION, startup, shutdown, openDashboard, openSettings, customizeMainWindow, onPrefsLoad, onPrefsUnload, health, syncNotes };
   Zotero.ZotQueryResearchUI = api;
   global.ZotQueryResearchUIBootstrap = { startup, shutdown };
 })(typeof _globalThis !== "undefined" ? _globalThis : this);

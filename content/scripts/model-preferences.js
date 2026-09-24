@@ -1,10 +1,12 @@
 /* Model/API/template configuration belongs to preferences, never the workbench. */
 (function () {
   "use strict";
+  const visionBindings = new WeakMap();
   async function bind(win) {
     const doc = win.document, $ = id => doc.getElementById(id);
     const root = $("zotquery-group-output-model");
-    if (!root || root.dataset.bound) return;
+    if (!root) return;
+    if (root.dataset.bound) { bindVision(win, "model-vision", "model-vision-state"); return; }
     root.dataset.bound = "1";
     const api = Zotero.ZotQueryModelAgent;
     const status = (message, bad = false) => {
@@ -16,11 +18,19 @@
       return { ...api.getConfig(), provider: $("model-provider").value,
         baseURL: $("model-base-url").value.trim(), model: $("model-name").value.trim(),
         reasoningEffort: $("model-reasoning").value,
+        visionEnabled: $("model-vision")?.checked === true,
+        maxTokensMode: $("model-budget-mode")?.value || "manual",
+        maxTokens: Number($("model-max-tokens").value),
         maxSteps: Number($("model-max-steps").value), timeoutSeconds: Number($("model-timeout").value) };
     }
     function render(config) {
       $("model-state").textContent = `${config.providerLabel} · ${config.model} · ${!config.apiKeyRequired || config.apiKeyConfigured ? "凭据已就绪" : "尚未保存 API Key"}`;
     }
+    $("model-check-limits")?.addEventListener("click", event => action(event.currentTarget, async () => {
+      status("正在读取模型目录，不发送研究内容、不生成回答…");
+      const limits = await api.inspectLimits(form(), $("model-api-key").value);
+      status(`服务商输出上限：${limits.output ?? "未公布 / 未能读取"}；共享上下文容量：${limits.context ?? "未公布 / 不适用"}。未公布不代表无限；自动模式将有限度自适应。`);
+    }));
     async function templateState() {
       const info = await api.templateInfo();
       $("template-state").textContent = info.configured ? `${info.name} · ${info.characters} 字符\n${info.path}` : (info.error || "未使用模板，可直接生成大模型回答。");
@@ -35,10 +45,10 @@
       status("正在保存配置…");
       const config = await api.saveConfig(form(), { apiKey: $("model-api-key").value });
       $("model-api-key").value = ""; render(config);
-      status("配置已保存；工作台下次研究自动使用。API Key 由 Zotero 登录管理器保存。");
+      status("配置已保存；研究台下次研究自动使用。API Key 由 Zotero 登录管理器保存。");
     }));
     $("model-test").addEventListener("click", event => action(event.currentTarget, async () => {
-      status("正在测试连接…");
+      status("正在测试连接与两轮工具回传（不读取文献，产生少量 API 用量）…");
       const result = await api.testConnection(form(), $("model-api-key").value);
       status(`连接成功：${result.provider}/${result.model} 返回 ${result.reply}。测试不会保存配置，请点击保存。`);
     }));
@@ -67,9 +77,37 @@
     const config = api.getConfig(); select.value = config.provider;
     $("model-base-url").value = config.baseURL; $("model-name").value = config.model;
     $("model-reasoning").value = config.reasoningEffort || "auto";
+    bindVision(win, "model-vision", "model-vision-state");
     $("model-max-steps").value = config.maxSteps; $("model-timeout").value = config.timeoutSeconds;
+    $("model-max-tokens").value = config.maxTokens;
+    if ($("model-budget-mode")) $("model-budget-mode").value = config.maxTokensMode || "manual";
     render(config);
     try { await templateState(); } catch (error) { status(error?.message || String(error), true); }
   }
-  Zotero.ZotQueryModelPreferences = { bind };
+  // Both views bind to one saved preference, not separate stale form copies.
+  function bindVision(win, inputId, statusId) {
+    const input = win.document.getElementById(inputId), status = win.document.getElementById(statusId);
+    if (!input || input.dataset.visionBound) return;
+    input.dataset.visionBound = "1";
+    const key = "zotquery.modelAgent.visionEnabled";
+    const sync = () => {
+      input.checked = Zotero.ZotQueryModelAgent.getConfig().visionEnabled === true;
+      if (status) status.textContent = (input.checked ? "已开启" : "已关闭 · 仅读取文字") + " · 即时保存，与设置和研究台同步";
+    };
+    const change = () => {
+      try { Zotero.Prefs.set(key, input.checked === true, true); sync(); }
+      catch (_) { sync(); if (status) status.textContent = "图片权限保存失败，请重试。"; }
+    };
+    const observer = { observe: sync };
+    const prefs = typeof Services !== "undefined" ? Services.prefs : null;
+    prefs?.addObserver(key, observer);
+    input.addEventListener("change", change);
+    let disposed = false;
+    const cleanup = () => { if (disposed) return; disposed = true; prefs?.removeObserver(key, observer); input.removeEventListener?.("change", change); win.removeEventListener?.("focus", sync); delete input.dataset.visionBound; visionBindings.delete(win); };
+    visionBindings.set(win, cleanup);
+    win.addEventListener?.("focus", sync);
+    win.addEventListener?.("unload", cleanup, { once: true });
+    sync();
+  }
+  Zotero.ZotQueryModelPreferences = { bind, bindVision, unbindVision: win => visionBindings.get(win)?.() };
 })();

@@ -17,7 +17,7 @@ class FilePicker {
   init() {} appendFilter() {} async show() { return 0; }
 }
 let renderedMarkdown;
-const ctx = { window: { ZotQueryMarkdown: { render(_root, markdown) { renderedMarkdown = markdown; } } }, document: { getElementById: node, querySelectorAll: () => [], createElementNS: () => element() },
+const ctx = { window: { confirm:()=>true, ZotQueryMarkdown: { render(_root, markdown) { renderedMarkdown = markdown; } } }, document: { getElementById: node, querySelectorAll: () => [], createElementNS: () => element() },
   ChromeUtils: { importESModule: () => ({ FilePicker }) }, IOUtils: { async writeUTF8(_path, text) { savedText = text; } },
   Zotero: {
     Prefs: { get: () => "standard" },
@@ -26,10 +26,12 @@ const ctx = { window: { ZotQueryMarkdown: { render(_root, markdown) { renderedMa
       getConfig: () => ({ providerLabel: "Test", model: "test" }),
       templateInfo: async () => ({ configured: false }),
       saveConfig: () => { throw Error("workbench must not save settings"); },
-      runAgent: async opts => { calls++; order.push("model"); assert.ok(opts.sessionId); return ({ sessionId: opts.sessionId, provider: "test", model: "test", markdown: answer,
+      runAgent: async opts => { calls++; order.push("model"); if(delayStart) await delayStart;
+        if (!opts.sessionId) { starts++; order.push("evidence"); if(failStart) throw Error("index unavailable"); opts.sessionId=`s${starts}`; opts.onEvent({type:'tool-result',sessionId:opts.sessionId}); }
+        return ({ sessionId: opts.sessionId, provider: "test", model: "test", markdown: answer,
         blocked: true, synthesisAllowed: false, deterministicAuditMarkdown: audit, template: { source: "none" } }); },
     },
-    ZotQueryResearch: { startOrchestratedResearch: async opts => { starts++; order.push("evidence"); assert.ok(opts.question); if (failStart) throw Error("index unavailable"); if(delayStart) await delayStart; return {sessionId:`s${starts}`}; }, sessionLedger: async () => ({ questionMode: "EXACT", status: "reviewing", coverage: {} }), researchResult: async () => ({}) },
+    ZotQueryResearch: { startOrchestratedResearch: async () => { throw Error('API action must let the agent plan before starting'); }, sessionLedger: async () => ({ questionMode: "EXACT", status: "reviewing", coverage: {} }), researchResult: async () => ({}) },
     ZotQueryOutputProfiles: { render: () => ({ markdown: audit, synthesisAllowed: false }) },
   },
 };
@@ -53,11 +55,11 @@ assert.equal(node("report-editor").value, answer + "\nUser edit", "viewing the l
 await click("save-report");
 assert.equal(savedText, answer + "\nUser edit");
 assert.doesNotMatch(savedText, /Internal audit|```json/);
-assert.deepEqual(order,["evidence","model"],"one click must prepare evidence before requesting model answer");
+assert.deepEqual(order,["model","evidence"],"one click lets the model plan before creating evidence session");
 await click("agent-generate");assert.equal(starts,1,"unchanged question can continue its session");
 node("research-query").value="A different question";await click("agent-generate");assert.equal(starts,2,"new question must never reuse old evidence");
 node("survey-preset").value="exhaustive";await click("agent-generate");assert.equal(starts,3,"changed strategy starts a new session");
-node("research-query").value="Failure question";failStart=true;const before=calls;await click("agent-generate");assert.equal(calls,before);assert.match(node("notice").textContent,/index unavailable/);assert.equal(node("agent-generate").disabled,false);failStart=false;
-let resume;delayStart=new Promise(r=>{resume=r;});const pending=click("agent-generate");await new Promise(r=>setImmediate(r));await click("agent-generate");await click("run-research");resume();await pending;assert.equal(calls,before+1,"busy clicks must not create parallel sessions");
+node("research-query").value="Failure question";failStart=true;const before=calls;await click("agent-generate");assert.equal(calls,before+1);assert.match(node("notice").textContent,/index unavailable/);assert.equal(node("agent-generate").disabled,false);failStart=false;
+let resume;delayStart=new Promise(r=>{resume=r;});const pending=click("agent-generate");await new Promise(r=>setImmediate(r));await click("agent-generate");await click("run-research");resume();await pending;assert.equal(calls,before+2,"busy clicks must not create parallel sessions");
 node("research-query").value="";await click("agent-generate");assert.match(node("notice").textContent,/先输入研究问题/);
-console.log("3.1.8 model-answer display, separate audit panel, and Markdown export regressions passed");
+console.log("3.1.17 model-answer display, separate audit panel, and Markdown export regressions passed");

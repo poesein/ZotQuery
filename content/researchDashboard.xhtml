@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
 <?xml-stylesheet href="chrome://zotquery/content/researchDashboard.css" type="text/css"?>
-<window id="zotquery-research-workbench" title="ZotQuery 研究工作台" orient="vertical"
+<window id="zotquery-research-workbench" title="ZotQuery 研究台" orient="vertical"
  width="1180" height="840" persist="width height screenX screenY"
  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml">
   <html:main id="dashboard" class="app-shell">
     <html:header class="topbar">
       <html:img class="brand-mark" src="chrome://zotquery/content/icons/favicon.png" alt="ZotQuery"/>
-      <html:div class="brand-copy"><html:h1>ZotQuery <html:span>研究工作台</html:span></html:h1><html:small>3.1.8</html:small></html:div>
+      <html:div class="brand-copy"><html:h1>ZotQuery <html:span>研究台</html:span></html:h1><html:small>3.1.17</html:small></html:div>
       <html:div class="top-health"><html:span id="health-dot" class="status-dot"></html:span><html:span id="health-label">检查中…</html:span></html:div>
       <html:button id="open-settings" type="button">ZotQuery 设置</html:button>
     </html:header>
@@ -19,18 +19,25 @@
           <html:button id="agent-generate" class="primary" type="button">大模型回答</html:button>
         </html:div>
         <html:div class="composer-meta"><html:span id="active-model">读取模型配置…</html:span><html:span id="active-template">模板可选</html:span></html:div>
+        <html:div id="live-request" class="request-bar hidden"><html:span id="request-status" role="status" aria-live="polite"></html:span><html:button id="agent-stop" class="stop-button" type="button" disabled="disabled">停止并保留</html:button></html:div>
+        <html:div class="vision-card">
+          <html:label class="toggle-line" for="research-vision"><html:span class="toggle-copy"><html:strong>允许模型看图</html:strong><html:small>按需发送 PDF 页面或区域；需模型支持图片，可能增加用量。</html:small></html:span><html:input id="research-vision" type="checkbox" role="switch" aria-describedby="research-vision-state"/></html:label>
+          <html:div id="research-vision-state" class="muted" role="status"></html:div>
+        </html:div>
         <html:details class="research-options">
-          <html:summary>研究选项与人工核验</html:summary>
+          <html:summary>研究选项</html:summary>
+          <html:div class="option-section"><html:h2>检索与阅读</html:h2>
           <html:div class="options-grid">
-          <html:div class="inline-grid">
             <html:label class="field"><html:span>问题模式</html:span><html:select id="question-mode"><html:option value="AUTO">自动判断</html:option><html:option value="STANDARD">标准综合</html:option><html:option value="EXACT">精确事实</html:option></html:select></html:label>
             <html:label class="field"><html:span>Survey 深度</html:span><html:select id="survey-preset"><html:option value="balanced">平衡</html:option><html:option value="quick">快速</html:option><html:option value="exhaustive">全量</html:option><html:option value="audit">审计</html:option></html:select></html:label>
-          </html:div>
           <html:label class="field"><html:span>阅读策略</html:span><html:select id="reading-policy"><html:option value="QUERY_EXHAUSTIVE">查询覆盖穷尽</html:option><html:option value="FULL_TEXT_CANDIDATES">候选全文分页</html:option><html:option value="ALL_POSITIONS">所有命中位置</html:option></html:select></html:label>
-          <html:label class="check-row"><html:input id="include-semantic" type="checkbox" checked="checked"/><html:span>同时使用语义检索；语义命中默认仅作导航，不扩大硬查询门禁。</html:span></html:label>
-
           </html:div>
-          <html:div class="manual-actions"><html:label class="check-row"><html:input id="lexical-only" type="checkbox"/><html:span>笔记召回仅用词法检索</html:span></html:label><html:button id="run-research" type="button">仅创建人工研究会话</html:button><html:span class="muted">不调用输出模型，可在证据台账中逐项核验。</html:span></html:div>
+          <html:div class="option-toggles">
+            <html:label class="option-check" for="include-semantic"><html:input id="include-semantic" type="checkbox" checked="checked"/><html:span><html:strong>补充语义检索</html:strong><html:small>查找相关线索；核对原文后可作为证据，不自动增加必审范围。</html:small></html:span></html:label>
+            <html:label class="option-check" for="lexical-only"><html:input id="lexical-only" type="checkbox"/><html:span><html:strong>笔记仅按词语匹配</html:strong><html:small>仅影响笔记召回，不关闭 PDF 语义检索。</html:small></html:span></html:label>
+          </html:div>
+          </html:div>
+          <html:div class="option-section manual-section"><html:div><html:h2>人工核验</html:h2><html:p class="muted">自行创建证据会话，在证据台账中逐项审阅；不调用输出模型。</html:p></html:div><html:button id="run-research" type="button">创建人工研究</html:button></html:div>
         </html:details>
       </html:section>
       <html:section class="research-progress" aria-label="研究进度">
@@ -39,8 +46,14 @@
         <html:div class="progress"><html:span id="coverage-progress"></html:span></html:div>
       </html:section>
       <html:section class="content-pane">
-        <html:nav class="tabs" aria-label="工作台视图"><html:button id="tab-report" class="tab active" type="button" data-tab="report" aria-pressed="true">回答正文</html:button><html:button id="tab-evidence" class="tab" type="button" data-tab="evidence" aria-pressed="false">证据台账</html:button></html:nav>
+        <html:nav class="tabs" aria-label="研究台视图"><html:button id="tab-report" class="tab active" type="button" data-tab="report" aria-pressed="true">回答正文</html:button><html:button id="tab-evidence" class="tab" type="button" data-tab="evidence" aria-pressed="false">证据台账</html:button><html:button id="tab-history" class="tab" type="button" data-tab="history" aria-pressed="false">研究历史</html:button><html:button id="new-research" type="button">新研究</html:button></html:nav>
+        <html:section id="view-history" class="view">
+          <html:div class="view-toolbar"><html:input id="history-search" type="search" aria-label="搜索研究问题" placeholder="搜索研究问题"/><html:button id="history-refresh" type="button">搜索 / 刷新</html:button><html:span id="history-meta" class="view-meta"></html:span><html:button id="history-prev" type="button" disabled="disabled">上一页</html:button><html:button id="history-next" type="button" disabled="disabled">下一页</html:button></html:div>
+          <html:div id="history-list" class="history-list"></html:div>
+          <html:p class="muted">回答保存在本机 Zotero 数据目录。旧版未保存的正文无法追溯恢复，但已有证据会话可打开并续跑。关闭窗口后仍可查看。</html:p>
+        </html:section>
         <html:section id="view-report" class="view active">
+          <html:div id="answer-versions" class="view-toolbar hidden"><html:label for="answer-version">历史回答版本</html:label><html:select id="answer-version"></html:select><html:button id="versions-prev" type="button">较新版本</html:button><html:button id="versions-next" type="button">更早版本</html:button><html:span id="version-meta" class="view-meta"></html:span></html:div>
           <html:div class="view-toolbar"><html:div id="report-meta" class="view-meta">输入问题后开始研究；无需导入模板。</html:div><html:button id="answer-read" type="button" class="mode-active" aria-pressed="true">阅读</html:button><html:button id="answer-source" type="button" aria-pressed="false">Markdown 源码</html:button><html:button id="copy-report" type="button" disabled="disabled">复制回答</html:button><html:button id="save-report" class="primary" type="button" disabled="disabled">保存 .md</html:button></html:div>
           <html:article id="report-preview" class="markdown-body" aria-label="渲染后的大模型回答"><html:div class="empty"><html:div><html:strong>答案会在这里展开</html:strong>输入问题后点击“大模型回答”。标题、表格、列表与引用会自动排版。</html:div></html:div></html:article>
           <html:textarea id="report-editor" class="report-editor hidden" aria-label="大模型回答 Markdown 源码" spellcheck="false" placeholder="大模型的回答将显示在这里。
@@ -48,29 +61,35 @@
 回答可直接编辑、复制或保存为 Markdown。证据台账单独保留，不会替代或混入回答。"></html:textarea>
         </html:section>
         <html:section id="view-evidence" class="view">
+          <html:details class="fact-box"><html:summary>各事实槽的完整支持情况</html:summary><html:div id="slot-status"></html:div></html:details>
+          <html:div class="view-toolbar"><html:span id="positions-page" class="view-meta"></html:span><html:button id="positions-prev" type="button" disabled="disabled">上一页证据</html:button><html:button id="positions-next" type="button" disabled="disabled">下一页证据</html:button></html:div>
           <html:div class="view-toolbar"><html:div id="evidence-meta" class="view-meta">尚未创建研究会话</html:div><html:button id="load-positions" type="button" disabled="disabled">加载证据</html:button><html:button id="finalize-session" type="button" disabled="disabled">检查证据完整性</html:button></html:div>
 
           <html:div id="evidence-list" class="empty"><html:div><html:strong>证据台账尚未建立</html:strong>创建统一研究会话后，这里会列出必须逐项阅读和审阅的 PDF 位置。</html:div></html:div>
+          <html:details><html:summary id="visual-summary">图像证据（与文字读取分开记录）</html:summary><html:div id="visual-list"></html:div><html:button id="visual-next" type="button" disabled="disabled">下一页图像记录</html:button><html:div id="visual-preview"></html:div></html:details>
           <html:div id="context-drawer" class="context-drawer hidden">
             <html:div class="section-title"><html:span id="context-title">证据上下文</html:span><html:button id="close-context" class="ghost" type="button">关闭</html:button></html:div>
             <html:div id="context-links" class="card-actions"></html:div>
             <html:pre id="context-text" class="context-text"></html:pre>
-            <html:div class="review-grid">
-              <html:select id="review-scope"><html:option value="DIRECT_FACT">DIRECT_FACT</html:option><html:option value="EXPERIMENT_RESULT">EXPERIMENT_RESULT</html:option><html:option value="SEQUENCE_DEFINITION">SEQUENCE_DEFINITION</html:option><html:option value="STRUCTURE_OBSERVATION">STRUCTURE_OBSERVATION</html:option><html:option value="REGION_MAPPING">REGION_MAPPING</html:option><html:option value="BACKGROUND">BACKGROUND</html:option></html:select>
-              <html:input id="review-reason" type="text" placeholder="填写本次审阅判断的简短理由（必填）"/>
+            <html:section class="review-section"><html:h2>人工审阅</html:h2><html:div class="review-grid">
+              <html:label class="field"><html:span>证据类型</html:span><html:select id="review-scope"><html:option value="DIRECT_FACT">直接事实</html:option><html:option value="EXPERIMENT_RESULT">实验结果</html:option><html:option value="SEQUENCE_DEFINITION">序列定义</html:option><html:option value="STRUCTURE_OBSERVATION">结构观察</html:option><html:option value="REGION_MAPPING">区间映射</html:option><html:option value="BACKGROUND">背景信息</html:option></html:select></html:label>
+              <html:label class="field"><html:span>判断理由（必填）</html:span><html:input id="review-reason" type="text" placeholder="说明原文与问题的关系"/></html:label>
             </html:div>
-            <html:div class="card-actions"><html:button id="review-support" class="primary" type="button">支持问题</html:button><html:button id="review-exclude" type="button">不支持 / 排除</html:button><html:button id="review-more" type="button">需要更多上下文</html:button></html:div>
+            <html:div class="review-actions"><html:button id="review-support" class="primary" type="button">支持问题</html:button><html:button id="review-exclude" type="button">不支持 / 排除</html:button><html:button id="review-more" type="button">需要更多上下文</html:button></html:div></html:section>
             <html:details class="fact-box">
-              <html:summary>登记类型化 FactRecord（仅已确认的 PDF 原文）</html:summary>
+              <html:summary>登记原文事实（仅已确认的 PDF 文字）</html:summary>
               <html:div class="fact-grid">
-                <html:label class="field"><html:span>Slot</html:span><html:input id="fact-slot" type="text" value="answer"/></html:label>
-                <html:label class="field"><html:span>valueType</html:span><html:select id="fact-type"><html:option value="exact_value">exact_value</html:option><html:option value="sequence">sequence</html:option><html:option value="residue_range">residue_range</html:option><html:option value="secondary_structure_range">secondary_structure_range</html:option><html:option value="functional_motif">functional_motif</html:option><html:option value="quantitative_measurement">quantitative_measurement</html:option><html:option value="mechanism">mechanism</html:option><html:option value="other">other</html:option></html:select></html:label>
+                <html:label class="field"><html:span>事实槽</html:span><html:input id="fact-slot" type="text" value="answer"/></html:label>
+                <html:label class="field"><html:span>值类型</html:span><html:select id="fact-type"><html:option value="exact_value">精确值</html:option><html:option value="sequence">序列</html:option><html:option value="residue_range">残基区间</html:option><html:option value="secondary_structure_range">二级结构区间</html:option><html:option value="functional_motif">功能基序</html:option><html:option value="quantitative_measurement">定量测量</html:option><html:option value="mechanism">机制</html:option><html:option value="other">其他</html:option></html:select></html:label>
                 <html:label class="field"><html:span>实体（可选）</html:span><html:input id="fact-entity" type="text"/></html:label>
                 <html:label class="field"><html:span>编号体系（可选）</html:span><html:input id="fact-numbering" type="text"/></html:label>
               </html:div>
               <html:label class="field"><html:span>精确值</html:span><html:input id="fact-value" type="text" placeholder="值必须逐字出现在下方短引中"/></html:label>
               <html:label class="field"><html:span>PDF 原文短引</html:span><html:textarea id="fact-quote" rows="3" placeholder="粘贴当前 PDF chunk 中的逐字短引"></html:textarea></html:label>
-              <html:button id="record-fact" type="button">记录 DIRECT FactRecord</html:button>
+              <html:label class="field"><html:span>对该事实槽的支持程度</html:span><html:select id="fact-relation"><html:option value="partial">仅部分支持</html:option><html:option value="full">完整支持</html:option><html:option value="context">仅背景相关</html:option><html:option value="contradicts">与之矛盾</html:option></html:select></html:label>
+              <html:label class="field"><html:span>原文实际说明什么</html:span><html:input id="fact-meaning" type="text" placeholder="对象、条件与证据类型；不要把映射写成直接观察"/></html:label>
+              <html:label class="field"><html:span>为何足以 / 不足以回答整个事实槽</html:span><html:input id="fact-rationale" type="text" placeholder="局部片段、相关数值、示例不能冒充完整答案"/></html:label>
+              <html:button id="record-fact" type="button">保存原文事实</html:button>
             </html:details>
           </html:div>
           <html:details id="audit-panel" class="audit-panel"><html:summary>研究台账文本（不随回答导出）</html:summary><html:button id="render-report" type="button" disabled="disabled">刷新台账文本</html:button><html:textarea id="audit-editor" class="audit-editor" readonly="readonly" aria-label="研究台账文本"></html:textarea></html:details>
@@ -82,7 +101,7 @@
         <html:div class="index-strip"><html:span>PDF <html:b id="metric-pdf">—</html:b></html:span><html:span>语段 <html:b id="metric-chunks">—</html:b></html:span><html:span>笔记 <html:b id="metric-notes">—</html:b></html:span><html:span>笔记向量 <html:b id="metric-vectors">—</html:b></html:span><html:span>向量模型 <html:b id="metric-model">—</html:b></html:span><html:button id="sync-notes" type="button">同步笔记</html:button><html:button id="refresh-health" type="button">刷新状态</html:button></html:div>
       </html:details>
     </html:div>
-    <html:footer id="notice" class="notice" role="status" aria-live="polite">研究工作台已就绪。</html:footer>
+    <html:footer id="notice" class="notice" role="status" aria-live="polite">研究台已就绪。</html:footer>
   </html:main>
   <script src="chrome://zotquery/content/vendor/marked.umd.js"></script>
   <script src="chrome://zotquery/content/scripts/markdown-view.js"></script>

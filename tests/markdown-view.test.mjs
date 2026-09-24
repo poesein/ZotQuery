@@ -24,4 +24,4 @@ api.render(root,'## Replacement\n\nNew source');assert.equal(flatten(root).filte
 const page=fs.readFileSync(new URL('../content/researchDashboard.xhtml',import.meta.url),'utf8');
 assert.match(page,/id="report-editor" class="report-editor hidden"/);assert.match(page,/id="report-preview" class="markdown-body"/);
 assert.ok(page.indexOf('vendor/marked.umd.js')<page.indexOf('scripts/markdown-view.js'));
-console.log('3.1.8 Markdown headings, tables, lists, quotes, code, links, HTML/XSS isolation, source refresh and default read mode passed');
+console.log('3.1.17 Markdown headings, tables, lists, quotes, code, links, HTML/XSS isolation, source refresh and default read mode passed');

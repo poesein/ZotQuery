@@ -1,4 +1,4 @@
-/* ZotQuery Evidence 3.1.8
+/* ZotQuery Evidence 3.1.17
  * Evidence Engine layered on the Search component.
  * Keeps normal search/indexing intact while adding exhaustive lexical
  * passage enumeration, semantic-union retrieval, adaptive context, LNE bridge,
@@ -7,7 +7,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "3.1.8";
+  const VERSION = "3.1.17";
   const DB = "zotquery";
   const RDB = "zotqueryresearch";
   const RFILE = "zotquery-research.sqlite";
@@ -178,6 +178,7 @@
     if (!positionColumns.has("cluster_id")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.positions ADD COLUMN cluster_id TEXT`);
     if (!positionColumns.has("should_match_count")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.positions ADD COLUMN should_match_count INTEGER NOT NULL DEFAULT 0`);
     if (!positionColumns.has("query_match_json")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.positions ADD COLUMN query_match_json TEXT`);
+    if (!positionColumns.has("source_context_json")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.positions ADD COLUMN source_context_json TEXT`);
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_positions_priority ON positions(session_id, evidence_priority)`);
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_positions_coverage ON positions(session_id, coverage_required, review_status)`);
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_positions_cluster ON positions(session_id, cluster_id)`);
@@ -203,6 +204,9 @@
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`);
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_facts_session ON fact_records(session_id)`);
+    const factColumns = new Set((await Zotero.DB.queryAsync(`PRAGMA ${RDB}.table_info(fact_records)`))?.map(r => r.name) || []);
+    if (!factColumns.has("assessment_json")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.fact_records ADD COLUMN assessment_json TEXT`);
+    await Zotero.DB.queryAsync(`CREATE TABLE IF NOT EXISTS ${RDB}.fact_assessment_revisions(revision_id TEXT PRIMARY KEY,fact_id TEXT NOT NULL,previous_json TEXT,assessment_json TEXT NOT NULL,created_at TEXT NOT NULL)`);
     await Zotero.DB.queryAsync(`CREATE TABLE IF NOT EXISTS ${RDB}.fact_resolutions (
       session_id TEXT NOT NULL, conflict_key TEXT NOT NULL, resolution TEXT NOT NULL,
       selected_fact_id TEXT, reason TEXT NOT NULL, created_at TEXT NOT NULL,
@@ -381,7 +385,7 @@
     if(/\b(?:Kd|Ki|Km|Vmax)\b/i.test(t)&&/\d/.test(t))return{scope:"BINDING_OR_KINETIC_RESULT",method:null,priority:6,warning:null};
     if(/\b(?:SPR|surface plasmon resonance|BLI|biolayer interferometry|ITC|isothermal titration calorimetry)\b/i.test(t))return{scope:"BINDING_RESULT",method:null,priority:8,warning:null};
     if(/\b(?:HDX|hydrogen.?deuterium|deuterium exchange)\b/i.test(t))return{scope:"REGION_MAPPING",method:"HDX_MS",priority:10,warning:null};
-    if(/(?:Δ|delta|deletion|truncat|construct|mutant construct|residues?\s+\d{1,5}\s*(?:-|–|—|to)\s*\d{1,5})/i.test(t))return{scope:"CONSTRUCT_DEFINITION",method:null,priority:12,warning:null};
+    if(/(?:Δ|\bdelta\b|deletion|truncat|construct)/i.test(t))return{scope:"CONSTRUCT_DEFINITION",method:null,priority:12,warning:null};
     if(/\b(?:cryo-?EM|crystal structure|X-ray|NMR|structure of|helix|strand|loop|domain)\b/i.test(t))return{scope:"STRUCTURE_OBSERVATION",method:null,priority:14,warning:null};
     if(/\b(?:motif|sequence|residue|residues|amino acid|position)\b/i.test(t)&&/\d/.test(t))return{scope:"SEQUENCE_OR_RESIDUE_DEFINITION",method:null,priority:15,warning:null};
     if(/\b\d+(?:\.\d+)?\s*(?:pM|nM|uM|µM|mM|M|ng\/mL|ug\/mL|mg\/mL|ms|s|min|h|hr|days?|Å|nm|µm|um)\b/i.test(t))return{scope:"QUANTITATIVE_MEASUREMENT",method:null,priority:16,warning:null};
@@ -413,23 +417,59 @@
     else if(/residue|position|numbering|boundary|range|残基|位置|编号|边界|范围/i.test(q))add("residue_range","residue_range");
     if(/\b(?:Kd|Ki|IC50|EC50)\b/i.test(q))add("quantitative_measurement","quantitative_measurement");
     if(!slots.length)add("answer","exact_value");
+    const sequenceSlot=slots.find(s=>s.type==="sequence"),rangeSlot=slots.find(s=>["residue_range","secondary_structure_range"].includes(s.type));
+    if(sequenceSlot&&rangeSlot)sequenceSlot.lengthFromSlot=rangeSlot.id;
     return{factType:slots[0].type,requestedField:"value",slots,answerRequiresDirectSource:true,allowInferenceAsFinalAnswer:false};
   }
   const FACT_TYPES=new Set(["naming_equivalence","construct_boundary","structure_resolved_range","secondary_structure_range","functional_motif","mutation_site","hdx_peptide","sequence","sequence_alignment","homology_mapping","quantitative_measurement","mechanism","other","exact_value","residue_range","binding_or_activity_value"]);
   const INTERVAL_FACT_TYPES=new Set(["construct_boundary","structure_resolved_range","secondary_structure_range","functional_motif","mutation_site","hdx_peptide","residue_range"]);
   function normalizedFactSlots(request){
     const slots=Array.isArray(request?.slots)?request.slots:[];
-    return slots.map((s,i)=>({id:String(s?.id||s?.slot||`slot-${i+1}`).trim(),type:String(s?.type||s?.valueType||"other").trim(),required:s?.required!==false})).filter(s=>s.id);
+    const normalized=slots.map((s,i)=>({id:String(s?.id||s?.slot||`slot-${i+1}`).trim(),type:String(s?.type||s?.valueType||"other").trim(),required:s?.required!==false,
+      entity:String(s?.entity||""),numbering:String(s?.numbering||""),unit:String(s?.unit||""),description:String(s?.description||""),
+      expectedLength:Number.isInteger(s?.expectedLength)&&s.expectedLength>0?s.expectedLength:null,
+      lengthFromSlot:String(s?.lengthFromSlot||"")})).filter(s=>s.id);
+    const sequences=normalized.filter(s=>s.type==="sequence"),ranges=normalized.filter(s=>["residue_range","secondary_structure_range"].includes(s.type));
+    if(sequences.length===1&&ranges.length===1&&!sequences[0].lengthFromSlot&&!sequences[0].expectedLength&&normalizeQuote(sequences[0].entity)===normalizeQuote(ranges[0].entity))sequences[0].lengthFromSlot=ranges[0].id;
+    return normalized;
+  }
+  function factAssessment(f) { try { return JSON.parse(f?.assessment_json || "null"); } catch (_) { return null; } }
+  function assessmentIssues(f, slot = {}) {
+    const a = factAssessment(f), issues = [];
+    if (!a || a.relation !== "full") issues.push(a ? `Only ${a.relation} support; not a whole-slot answer` : "Legacy/unassessed fact: reassess source meaning before closing the slot");
+    if (!a?.rationale || !a?.sourceMeaning) issues.push("Missing source meaning or claim-to-source rationale");
+    if (slot.entity && normalizeQuote(slot.entity) !== normalizeQuote(f.entity)) issues.push("Entity differs from declared slot; establish identity before asserting equivalence");
+    if (slot.numbering && normalizeQuote(slot.numbering) !== normalizeQuote(f.numbering)) issues.push("Numbering/coordinate system differs from declared slot");
+    if (slot.unit && normalizeQuote(slot.unit) !== normalizeQuote(f.unit)) issues.push("Measurement unit differs from declared slot; conversions must be explicit derivations");
+    if (slot.expectedLength && f.value_type === "sequence" && String(f.value_text).replace(/\s/g, "").length !== slot.expectedLength) issues.push(`Sequence length does not match required length ${slot.expectedLength}`);
+    return issues;
+  }
+  function validateAssessment(input) {
+    if (!input || !["full", "partial", "context", "contradicts"].includes(input.relation)) throw new Error("assessment.relation must be full, partial, context or contradicts; a literal match alone does not establish a whole-slot answer");
+    const sourceMeaning = String(input.sourceMeaning || "").trim(), rationale = String(input.rationale || "").trim();
+    if (!sourceMeaning || !rationale) throw new Error("assessment.sourceMeaning and rationale are required: state what the source actually establishes and why it supports this slot");
+    return { relation: input.relation, sourceMeaning, rationale, limitations: String(input.limitations || "").trim() };
   }
   function supportedDirectFact(f){return f?.evidence_status==="DIRECT"&&directValueSupported(f.value_text,f.source_quote)&&f.source_review_status==="reviewed"&&f.source_supports_question==="yes";}
   function factSlotClosure(request,facts){
     const slots=normalizedFactSlots(request),direct=(facts||[]).filter(supportedDirectFact);
-    const detail=slots.map(s=>{const matched=direct.filter(f=>f.slot===s.id&&(!s.type||s.type==="other"||f.value_type===s.type));return{...s,closed:matched.length>0,directFactIds:matched.map(f=>f.fact_id)};});
+    const detail=slots.map(s=>{
+      const candidates=direct.filter(f=>f.slot===s.id&&(!s.type||s.type==="other"||f.value_type===s.type));
+      const evaluated=candidates.map(f=>({factId:f.fact_id,issues:assessmentIssues(f,s)}));
+      // Explicitly linked inclusive coordinates provide a deterministic completeness check.
+      if(s.type==="sequence"&&s.lengthFromSlot){
+        const ranges=direct.filter(f=>f.slot===s.lengthFromSlot&&!assessmentIssues(f,slots.find(x=>x.id===s.lengthFromSlot)).length);
+        const lengths=[...new Set(ranges.map(f=>/^\s*(\d+)\s*[-–—]\s*(\d+)\s*$/.exec(f.value_text)).filter(Boolean).map(m=>Number(m[2])-Number(m[1])+1).filter(n=>n>0))];
+        for(const row of evaluated){const f=candidates.find(x=>x.fact_id===row.factId);if(lengths.length!==1)row.issues.push("Linked coordinate slot is missing or ambiguous");else if(String(f.value_text).replace(/\s/g,"").length!==lengths[0])row.issues.push(`Partial sequence: expected ${lengths[0]} symbols from linked inclusive range`);}
+      }
+      const matched=evaluated.filter(x=>!x.issues.length);
+      return{...s,closed:matched.length>0,directFactIds:matched.map(f=>f.factId),assessments:evaluated};
+    });
     return{declared:slots.length,required:detail.filter(s=>s.required).length,closedRequired:detail.filter(s=>s.required&&s.closed).length,openRequired:detail.filter(s=>s.required&&!s.closed).map(s=>({id:s.id,type:s.type})),slots:detail,allRequiredClosed:detail.filter(s=>s.required).every(s=>s.closed)};
   }
   function crossTypeIntervalWarnings(facts){
     const groups=new Map();
-    for(const f of facts||[]){if(f.evidence_status!=="DIRECT"||!INTERVAL_FACT_TYPES.has(f.value_type))continue;const k=[f.entity||"",f.normalized_value||"",f.numbering||""].join("|").toLowerCase();if(!groups.has(k))groups.set(k,[]);groups.get(k).push(f);}
+    for(const f of facts||[]){if(f.evidence_status!=="DIRECT"||!INTERVAL_FACT_TYPES.has(f.value_type)||["partial","context"].includes(factAssessment(f)?.relation))continue;const k=[f.entity||"",f.normalized_value||"",f.numbering||""].join("|").toLowerCase();if(!groups.has(k))groups.set(k,[]);groups.get(k).push(f);}
     const out=[];for(const [key,list] of groups){const types=[...new Set(list.map(f=>f.value_type))];if(types.length>1)out.push({key,value:list[0].value_text,types,factIds:list.map(f=>f.fact_id),warning:"The same interval was recorded under different evidence types; these boundaries are not interchangeable without an explicit source-supported mapping."});}return out;
   }
   function normalizeFactValue(value, valueType="") {let s=String(value??"").trim().replace(/[‐‑‒–—−]/g,"-").replace(/\s+/g," ");if(/range|residue/i.test(valueType))s=s.replace(/\s*(?:-|to)\s*/gi,"-");return s.toLowerCase();}
@@ -448,6 +488,9 @@
   }
   async function pdfChunkText(position) {
     if (position?.source !== "pdf" || position.chunk_index == null) return null;
+    const saved=jsonObject(position.source_context_json,null);
+    const target=saved?.chunks?.find(c=>c.chunkIndex===Number(position.chunk_index));
+    if(target)return target.text;
     const pk=await Zotero.DB.valueQueryAsync(`SELECT item_pk FROM ${DB}.items WHERE library_key=? AND item_key=?`,[position.library_key,position.item_key]);
     return pk==null?null:await Zotero.DB.valueQueryAsync(`SELECT chunk_text FROM ${DB}.chunks WHERE item_pk=? AND model_id=? AND chunk_index=?`,[Number(pk),activeModel(),Number(position.chunk_index)]);
   }
@@ -713,7 +756,7 @@
   async function factConflicts(sessionId,facts=null){
     const rows=facts||await Zotero.DB.queryAsync(`SELECT f.*,p.review_status source_review_status,p.supports_question source_supports_question FROM ${RDB}.fact_records f LEFT JOIN ${RDB}.positions p ON p.position_id=f.position_id WHERE f.session_id=?`,[sessionId]);
     const groups=new Map();
-    for(const f of rows||[]){if(f.evidence_status!=="DIRECT")continue;const k=conflictKeyForFact(f);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(f);}
+    for(const f of rows||[]){if(f.evidence_status!=="DIRECT"||["partial","context"].includes(factAssessment(f)?.relation))continue;const k=conflictKeyForFact(f);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(f);}
     const resolutions=await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.fact_resolutions WHERE session_id=?`,[sessionId])||[];
     const resolved=new Set();
     for(const r of resolutions){
@@ -757,10 +800,30 @@
     const declaredSlots=normalizedFactSlots(request),declared=declaredSlots.find(s=>s.id===slot);
     if(declaredSlots.length&&!declared)throw new Error(`slot '${slot}' is not declared by this session's factRequest`);
     if(declared&&declared.type&&declared.type!=="other"&&declared.type!==valueType)throw new Error(`slot '${slot}' requires valueType '${declared.type}', not '${valueType}'`);
+    const assessment=validateAssessment(payload.assessment);
     await Zotero.DB.queryAsync(`INSERT INTO ${RDB}.fact_records(fact_id,session_id,position_id,slot,entity,value_text,normalized_value,value_type,unit,numbering,evidence_status,source_quote,locator_json,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[id,p.session_id,p.position_id,slot,payload.entity||null,value,normalizeFactValue(value,valueType),valueType,payload.unit||null,payload.numbering||null,status,quote,JSON.stringify(locator),payload.notes||null,ts,ts]);
     const newConflictKey=conflictKeyForFact({slot,entity:payload.entity||null,value_type:valueType,unit:payload.unit||null,numbering:payload.numbering||null});
+    await Zotero.DB.queryAsync(`UPDATE ${RDB}.fact_records SET assessment_json=? WHERE fact_id=?`,[JSON.stringify(assessment),id]);
     await Zotero.DB.queryAsync(`DELETE FROM ${RDB}.fact_resolutions WHERE session_id=? AND conflict_key=?`,[p.session_id,newConflictKey]);
     return {ok:true,factId:id,sessionId:p.session_id,conflicts:await factConflicts(p.session_id),slotClosure:factSlotClosure(request,await Zotero.DB.queryAsync(`SELECT f.*,p.review_status source_review_status,p.supports_question source_supports_question FROM ${RDB}.fact_records f LEFT JOIN ${RDB}.positions p ON p.position_id=f.position_id WHERE f.session_id=?`,[p.session_id]))};
+  }
+  async function assessFact({factId: id, assessment}={}) {
+    await ensureResearchSchema();
+    const f=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.fact_records WHERE fact_id=?`,[id]))?.[0];
+    if(!f)throw new Error("Unknown fact");
+    const p=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE position_id=?`,[f.position_id]))?.[0];
+    if(!p?.context_read_at)throw new Error("Read evidence_context before reassessing a fact");
+    const verified=validateAssessment(assessment);
+    if(f.evidence_status==="DIRECT"&&verified.relation==="full"){
+      const source=await pdfChunkText(p);
+      if(p.review_status!=="reviewed"||p.supports_question!=="yes"||!normalizeQuote(source).includes(normalizeQuote(f.source_quote))||!directValueSupported(f.value_text,f.source_quote))throw new Error("Current source and affirmative review must still support this DIRECT fact");
+    }
+    await Zotero.DB.executeTransaction(async()=>{
+      await Zotero.DB.queryAsync(`INSERT INTO ${RDB}.fact_assessment_revisions(revision_id,fact_id,previous_json,assessment_json,created_at) VALUES(?,?,?,?,?)`,[factId(),id,f.assessment_json||null,JSON.stringify(verified),now()]);
+      await Zotero.DB.queryAsync(`UPDATE ${RDB}.fact_records SET assessment_json=?,updated_at=? WHERE fact_id=?`,[JSON.stringify(verified),now(),id]);
+    });
+    await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET status='reviewing',updated_at=? WHERE session_id=?`,[now(),f.session_id]);
+    return {ok:true,sessionId:f.session_id,factId:id,assessment:verified};
   }
 
   async function resolveFactConflict(sessionId,payload={}){
@@ -801,8 +864,8 @@
     const decisionTotal=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.positions WHERE session_id=? AND coverage_required=1`,[sessionId])||0);
     const raw=await Zotero.DB.queryAsync(`SELECT position_id,work_key,title,review_status,reason,source,context_read_at,listed_at FROM ${RDB}.positions WHERE session_id=? AND coverage_required=1 ORDER BY evidence_priority,work_key,position_id LIMIT ? OFFSET ?`,[sessionId,pageLimit,pageOffset]);
     const decisions=(raw||[]).map(r=>({positionId:r.position_id,workKey:r.work_key,title:r.title,reviewStatus:r.review_status,reason:r.reason||"",source:r.source,listed:!!r.listed_at,contextRead:!!r.context_read_at}));
-    const factRows=await Zotero.DB.queryAsync(`SELECT fact_id,position_id,slot,entity,value_text,value_type,unit,numbering,evidence_status,source_quote,locator_json FROM ${RDB}.fact_records WHERE session_id=? ORDER BY slot,created_at`,[sessionId]);
-    const facts=await Promise.all((factRows||[]).map(async r=>{const locator=jsonObject(r.locator_json,{});return{factId:r.fact_id,positionId:r.position_id,slot:r.slot,entity:r.entity,value:r.value_text,valueType:r.value_type,unit:r.unit,numbering:r.numbering,evidenceStatus:r.evidence_status,sourceQuote:r.source_quote,locator,links:await sourceLinks(locator)};}));
+    const factRows=await Zotero.DB.queryAsync(`SELECT fact_id,position_id,slot,entity,value_text,value_type,unit,numbering,evidence_status,source_quote,locator_json,notes,assessment_json FROM ${RDB}.fact_records WHERE session_id=? ORDER BY slot,created_at`,[sessionId]);
+    const facts=await Promise.all((factRows||[]).map(async r=>{const locator=jsonObject(r.locator_json,{});return{factId:r.fact_id,positionId:r.position_id,slot:r.slot,entity:r.entity,value:r.value_text,valueType:r.value_type,unit:r.unit,numbering:r.numbering,evidenceStatus:r.evidence_status,sourceQuote:r.source_quote,notes:r.notes,assessment:factAssessment(r),locator,links:await sourceLinks(locator)};}));
     const refRows=await Zotero.DB.queryAsync(`SELECT work_key,MAX(title) title FROM ${RDB}.positions WHERE session_id=? GROUP BY work_key ORDER BY title`,[sessionId]);
     const references=(refRows||[]).map(r=>{const workKey=String(r.work_key||"");const split=workKey.lastIndexOf(":");return{workKey,title:r.title||"",parentLink:split>0?zoteroItemLink(workKey.slice(0,split),workKey.slice(split+1)):null};});
     const screenedPapers=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(DISTINCT work_key) FROM ${RDB}.positions WHERE session_id=? AND coverage_required=1 AND review_status NOT IN ('unreviewed','needs_context')`,[sessionId])||0);
@@ -824,9 +887,46 @@
       corpusHealth:{retrievalComplete:ledger.coverage.retrievalComplete},
       funnel:{retrievedPapers:ledger.coverage.candidatePapers,screenedPapers,contextReadPapers,fullTextPagedPapers:ledger.coverage.documents?.completeDocuments??0,deepReadPapers:null,deepReadTracking:"not recorded; do not infer from retrieval"},
       coverage:ledger.coverage,coverageGate:{synthesisAllowed:ready,blockers},evidenceSlots:ledger.coverage.slotClosure?.slots||[],
-      candidateDecisions:decisions,evidenceUnits:[],facts,claims:[],conflicts:ledger.factConflicts||[],gaps:blockers,references,
+      candidateDecisions:decisions,evidenceUnits:[],facts,claims:[],conflicts:ledger.factConflicts||[],gaps:blockers,references,nextActions:await nextActions(sessionId,ledger),
+      visualEvidence:await Zotero.ZotQueryVision?.list?.(sessionId,{offset:pageOffset,limit:pageLimit})||null,
       pagination:{offset:pageOffset,limit:pageLimit,totalDecisions:decisionTotal,nextOffset:pageOffset+decisions.length<decisionTotal?pageOffset+decisions.length:null,truncated:pageOffset+decisions.length<decisionTotal},
       audit:{generatedAt:now(),source:"persisted research session",noteEvidenceIsNavigation:true,directFactsRequireOriginalPdf:true}};
+  }
+
+  async function nextActions(sessionId, ledger=null) {
+    ledger=ledger||await sessionLedger(sessionId);
+    const pending=await Zotero.DB.queryAsync(`SELECT position_id,review_status,context_read_at FROM ${RDB}.positions WHERE session_id=? AND coverage_required=1 AND (context_read_at IS NULL OR review_status IN ('unreviewed','needs_context','unresolved','conflicting')) ORDER BY evidence_priority,work_key,position_id LIMIT 12`,[sessionId]);
+    const factCandidates=await Zotero.DB.queryAsync(`SELECT p.position_id,p.work_key,p.page_number,p.supports_question,p.evidence_scope FROM ${RDB}.positions p
+      WHERE p.session_id=? AND p.coverage_required=1 AND p.source='pdf' AND p.context_read_at IS NOT NULL
+        AND p.review_status='reviewed' AND p.supports_question IN ('yes','partial')
+        AND NOT EXISTS (SELECT 1 FROM ${RDB}.fact_records f WHERE f.session_id=p.session_id AND f.position_id=p.position_id)
+      ORDER BY CASE p.supports_question WHEN 'yes' THEN 0 ELSE 1 END,p.evidence_priority,p.work_key,p.position_id LIMIT 8`,[sessionId]);
+    const priorities=[];
+    if(factCandidates?.length) priorities.push('Register or explicitly assess source-supported facts from the reviewed PDF positions listed in factCandidates before more broad navigation. Re-open original text for exact quotes if needed; a review judgment is navigation, not the quote. Record partial support as partial, never as a complete exact answer.');
+    if(pending?.length) priorities.push('Read/review pending required positions; do not repeatedly read already reviewed passages without a specific missing detail.');
+    if(!ledger.coverage.factsComplete) priorities.push('Register source-supported partial facts and assess each open slot. Missing registry is not absence of evidence. If the value is in a figure, read the actual page image and preserve visual observation separately.');
+    if(ledger.orchestration?.required&&!ledger.orchestration.complete) priorities.push('Continue the exact promotion cursor below; do not restart the survey or reread unrelated full PDFs.');
+    if(!priorities.length) priorities.push('Run evidence_finalize; report any remaining blockers separately from supported conclusions.');
+    return {sessionId,priorities,readOrReview:(pending||[]).map(p=>({positionId:p.position_id,nextTool:p.context_read_at&&p.review_status==='unreviewed'?"zotquery_evidence_review":"zotquery_evidence_context",reviewStatus:p.review_status})),
+      factCandidates:(factCandidates||[]).map(p=>({positionId:p.position_id,workKey:p.work_key,pageNumber:p.page_number,supportsQuestion:p.supports_question,evidenceScope:p.evidence_scope,nextTool:"zotquery_evidence_fact",navigationOnly:true})),
+      slots:ledger.coverage.slotClosure?.slots||[],conflicts:ledger.factConflicts,
+      promotion:ledger.orchestration?.required&&!ledger.orchestration.complete?{tool:ledger.orchestration.surveyId?"zotquery_evidence_promote_notes":"zotquery_evidence_retry_orchestration",sessionId,offset:ledger.orchestration.state?.promotionOffset||0,limit:50}:null,
+      rule:"Actions are navigation, not evidence and do not mark anything read. Re-read a source before reassessing old facts. Partial evidence cannot close a whole-answer slot. Separate primary observation, mapping, constructed boundaries, and derived values; report limitations rather than substituting one type for another."};
+  }
+
+  async function validateSessionScope(sessionId,args={}) {
+    if(!sessionId && (args.positionId||args.factId||args.resolutionPositionId))throw new Error("Create a research session before operating on evidence");
+    if(args.sessionId && args.sessionId!==sessionId)throw new Error("Evidence belongs to another research session");
+    for(const key of ["positionId","resolutionPositionId"]){
+      if(!args[key])continue;
+      const sid=await Zotero.DB.valueQueryAsync(`SELECT session_id FROM ${RDB}.positions WHERE position_id=?`,[args[key]]);
+      if(sid!==sessionId)throw new Error("Position does not belong to the bound research session");
+    }
+    for(const key of ["factId","selectedFactId"]){
+      if(!args[key])continue;
+      const sid=await Zotero.DB.valueQueryAsync(`SELECT session_id FROM ${RDB}.fact_records WHERE fact_id=?`,[args[key]]);
+      if(sid!==sessionId)throw new Error("Fact does not belong to the bound research session");
+    }
   }
 
   async function positions(sessionId,{offset=0,limit=25,status=null,scope="coverage",compact=false,includeLinks=false}={}) {
@@ -854,12 +954,29 @@
   }
 
   async function positionContext(positionId,{level=1}={}) {
-    await ensureResearchSchema();const p=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE position_id=?`,[positionId]))?.[0];if(!p)throw new Error("Unknown position");await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET context_read_at=COALESCE(context_read_at,?),context_level=MAX(context_level,?),updated_at=? WHERE position_id=?`,[now(),num(level,1,0,3),now(),positionId]);let registeredHint=null;try{registeredHint=p.evidence_hint?JSON.parse(p.evidence_hint):null;}catch{}
-    if(p.source==="pdf"){const span=level<=0?0:level===1?2:level===2?5:12,ctx=await context({libraryKey:p.library_key,itemKey:p.item_key,chunkIndex:p.chunk_index,before:span,after:span});const links=await sourceLinks({libraryKey:p.library_key,itemKey:p.item_key,pageNumber:p.page_number});return{positionId,source:"pdf",level,...ctx,links,registeredEvidenceHint:registeredHint,evidenceRule:"Evidence hints are ranking aids only. Decide scope/support from the source context; exact facts require a direct PDF FactRecord with stable locator."};}
+    await ensureResearchSchema();const p=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE position_id=?`,[positionId]))?.[0];if(!p)throw new Error("Unknown position");let registeredHint=null;try{registeredHint=p.evidence_hint?JSON.parse(p.evidence_hint):null;}catch{}
+    level=num(level,1,0,3);
+    const markRead=()=>Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET context_read_at=COALESCE(context_read_at,?),context_level=MAX(context_level,?),updated_at=? WHERE position_id=?`,[now(),level,now(),positionId]);
+    if(p.source==="pdf"){
+      const saved=jsonObject(p.source_context_json,null),span=level<=0?0:level===1?2:level===2?5:12;
+      let ctx=saved;
+      if(!saved||span>Number(saved.before||0)){
+        const fresh=await context({libraryKey:p.library_key,itemKey:p.item_key,chunkIndex:p.chunk_index,before:span,after:span,modelId:saved?.modelId||null});
+        const target=fresh.chunks.find(c=>c.target),oldTarget=saved?.chunks?.find(c=>c.target);
+        if(!target?.text) { if(!saved)throw new Error("Target PDF chunk is unavailable; not marked as read"); }
+        else if(oldTarget&&oldTarget.text!==target.text)throw new Error("Indexed source changed since the saved reading. Old evidence is preserved; use a new session to read the revised source.");
+        else { ctx={...fresh,capturedAt:now()}; await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET source_context_json=? WHERE position_id=?`,[JSON.stringify(ctx),positionId]); }
+      }
+      level=Math.min(level,ctx.before>=12?3:ctx.before>=5?2:ctx.before>=2?1:0);
+      const links=await sourceLinks({libraryKey:p.library_key,itemKey:p.item_key,pageNumber:p.page_number});
+      await markRead();
+      return{positionId,source:"pdf",level,...ctx,links,registeredEvidenceHint:registeredHint,snapshot:true,evidenceRule:"Original reading snapshot, not necessarily the current reindexed text. Evidence hints are ranking aids only. Distinguish full support from partial evidence; use the source meaning, not a literal-value match alone."};
+    }
     if(p.source==="note"){
       if(!Zotero.ZotQueryLNE?.api?.trace)throw new Error("Native LNE trace API is unavailable");
       const trace=await Zotero.ZotQueryLNE.api.trace(p.note_key,{libraryKey:p.library_key,from:p.line_start??1,around:level<=0?1:level===1?3:level===2?8:20});
       const links=await sourceLinks({libraryKey:p.library_key,itemKey:p.item_key,noteKey:p.note_key,lineStart:p.line_start,lineEnd:p.line_end});
+      await markRead();
       return{positionId,source:"note",level,trace,links,registeredEvidenceHint:registeredHint,evidenceRule:"LNE notes are navigation/synthesis aids, not primary proof. Use evidence_verify_note to locate same-parent PDF evidence before recording a DIRECT fact."};
     }
     throw new Error("Unsupported position source");
@@ -876,8 +993,10 @@
     if(Math.abs(index-Number(parent.chunk_index))>span)throw new Error("Chunk is outside the context span already read; reopen evidence_context at a larger level");
     const pk=await Zotero.DB.valueQueryAsync(`SELECT item_pk FROM ${DB}.items WHERE library_key=? AND item_key=?`,[parent.library_key,parent.item_key]);
     if(pk==null)throw new Error("Indexed PDF item is unavailable");
-    const chunk=(await Zotero.DB.queryAsync(`SELECT chunk_index,chunk_text,page_number,paragraph_index FROM ${DB}.chunks WHERE item_pk=? AND model_id=? AND chunk_index=?`,[Number(pk),activeModel(),index]))?.[0];
+    const snapshot=jsonObject(parent.source_context_json,null),seen=snapshot?.chunks?.find(c=>c.chunkIndex===index);
+    const chunk=(await Zotero.DB.queryAsync(`SELECT chunk_index,chunk_text,page_number,paragraph_index FROM ${DB}.chunks WHERE item_pk=? AND model_id=? AND chunk_index=?`,[Number(pk),snapshot?.modelId||activeModel(),index]))?.[0];
     if(!chunk)throw new Error("Requested chunk is not present in this indexed PDF");
+    if(seen&&seen.text!==chunk.chunk_text)throw new Error("Adjacent source changed since it was read; start a new session for revised evidence");
     const id=positionId(parent.session_id,"pdf",parent.work_key,`c${index}`),ts=now();
     const hint=genericEvidenceHint(chunk.chunk_text||"");
     await Zotero.DB.queryAsync(`INSERT OR IGNORE INTO ${RDB}.positions (position_id,session_id,source,work_key,library_key,item_key,title,chunk_index,page_number,paragraph_index,match_kind,preview,review_status,evidence_hint,evidence_priority,coverage_required,position_role,cluster_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[id,parent.session_id,"pdf",parent.work_key,parent.library_key,parent.item_key,parent.title,index,chunk.page_number??null,chunk.paragraph_index??null,"context-promotion",String(chunk.chunk_text||"").slice(0,500),"unreviewed",JSON.stringify(hint),hint.priority??50,1,"promoted-context-chunk",`context-${index}`,ts,ts]);
@@ -924,13 +1043,35 @@
 
   function jsonObject(value, fallback={}) { try { return value ? JSON.parse(value) : fallback; } catch (_) { return fallback; } }
 
-  async function promoteSurveyNotes(sessionId,{offset=0,limit=12,query=null,aliases=[]}={}) {
+  async function registerSurveyNote(sessionId, work, keys) {
+    // Survey and sweep use different pagination. Resolve the actual Zotero parent
+    // instead of silently losing a valid survey work outside the first sweep page.
+    for (const key of keys) {
+      const ref=(work.noteRefs||[]).find(r=>r.noteKey===key);
+      const libraryKey=ref?.libraryKey||work.libraryKey;
+      if(libraryKey!=="user"&&!/^group:\d+$/.test(String(libraryKey)))continue;
+      const libraryID=libraryKey==="user"?Zotero.Libraries.userLibraryID:Zotero.Groups.getLibraryIDFromGroupID(Number(libraryKey.slice(6)));
+      const noteID=Zotero.Items.getIDFromLibraryAndKey(libraryID,key),note=noteID?await Zotero.Items.getAsync(noteID):null;
+      if(!note?.isNote?.()||!note.parentItemID)continue;
+      const parent=await Zotero.Items.getAsync(note.parentItemID);
+      if(!parent?.key)continue;
+      const workKey=`${libraryKey}:${parent.key}`,id=positionId(sessionId,"note",workKey,`survey-${key}`),ts=now();
+      await Zotero.DB.queryAsync(`INSERT OR IGNORE INTO ${RDB}.positions(position_id,session_id,source,work_key,library_key,item_key,title,note_key,line_start,line_end,match_kind,preview,review_status,coverage_required,position_role,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [id,sessionId,"note",workKey,libraryKey,parent.key,parent.getField?.("title")||work.title||"",key,1,1,"survey-navigation","Survey note: open its context for the source text","unreviewed",0,"navigation",ts,ts]);
+      return (await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE position_id=?`,[id]))?.[0];
+    }
+    return null;
+  }
+
+  async function promoteSurveyNotes(sessionId,{offset=0,limit=50,query=null,aliases=[]}={}) {
     await ensureResearchSchema();
     const s=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.sessions WHERE session_id=?`,[sessionId]))?.[0];
     if(!s)throw new Error("Unknown session");
     if(!s.survey_id)throw new Error("Session is not linked to an LNE survey; start it with evidence_research_start");
     if(!Zotero.ZotQueryLNE?.api?.surveyScreen)throw new Error("LNE Survey tools are unavailable");
-    const pageLimit=num(limit,12,1,50),pageOffset=num(offset,0,0,1e8);
+    const pageLimit=num(limit,50,1,50),pageOffset=num(offset,0,0,1e8);
+    const previous=jsonObject(s.orchestration_json,{});
+    if(pageOffset>Number(previous.promotionOffset||0))throw new Error(`Continue promotion at offset ${previous.promotionOffset||0}; do not skip pages`);
     const screened=await Zotero.ZotQueryLNE.api.surveyScreen(s.survey_id,{coreOnly:true,requirePaperSide:true,offset:pageOffset,limit:pageLimit});
     const stored=jsonObject(s.query_json,{}),contract=stored?.queryContract||{};
     // Same-parent verification is a locator step, not an identity rewrite.
@@ -945,15 +1086,18 @@
       const keys=[...new Set([work.noteKey,...(work.noteKeys||[])].filter(Boolean).map(x=>String(x).toUpperCase()))];
       if(!keys.length){missing.push({workKey:work.workKey,title:work.title,reason:"survey work has no note key"});continue;}
       const ph=keys.map(()=>"?").join(",");
-      const pos=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE session_id=? AND source='note' AND note_key IN (${ph}) ORDER BY evidence_priority ASC,match_score DESC,line_start LIMIT 1`,[sessionId,...keys]))?.[0];
-      if(!pos){missing.push({workKey:work.workKey,noteKeys:keys,title:work.title,reason:"core survey note was outside the sweep navigation page"});continue;}
+      let pos=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE session_id=? AND source='note' AND note_key IN (${ph}) ORDER BY evidence_priority ASC,match_score DESC,line_start LIMIT 1`,[sessionId,...keys]))?.[0];
+      if(!pos) { try { pos=await registerSurveyNote(sessionId,work,keys); } catch(e) { failed.push({workKey:work.workKey,error:e.message}); continue; } }
+      if(!pos){missing.push({workKey:work.workKey,noteKeys:keys,title:work.title,reason:"No valid local note-to-parent relationship available; original PDF verification remains unavailable"});continue;}
       try{promoted.push({workKey:work.workKey,noteKey:pos.note_key,verification:await verifyNoteSource(pos.position_id,{query:verifyQuery,aliases,limit:50})});}
       catch(e){failed.push({workKey:work.workKey,noteKey:pos.note_key,error:e.message});}
     }
     const nextOffset=screened.pagination?.nextOffset??null,prior=jsonObject(s.orchestration_json,{});
-    const state={...prior,surveyId:s.survey_id,promotionOffset:pageOffset+(screened.results?.length||0),promotionComplete:nextOffset==null,
-      promotedWorks:Number(prior.promotedWorks||0)+promoted.length,missingWorks:Number(prior.missingWorks||0)+missing.length,
-      failedWorks:Number(prior.failedWorks||0)+failed.length,lastPromotionAt:now()};
+    const pages={...(prior.pages||{}),[pageOffset]:{promoted:promoted.length,missing:missing.length,failed:failed.length}};
+    const counts=Object.values(pages).reduce((sum,p)=>({promoted:sum.promoted+p.promoted,missing:sum.missing+p.missing,failed:sum.failed+p.failed}),{promoted:0,missing:0,failed:0});
+    const retryOffsets=Object.keys(pages).filter(k=>pages[k].failed).map(Number);
+    const state={...prior,surveyId:s.survey_id,pages,promotionOffset:retryOffsets.length?Math.min(...retryOffsets):Math.max(Number(prior.promotionOffset||0),pageOffset+(screened.results?.length||0)),promotionComplete:(nextOffset==null||prior.promotionReachedEnd===true)&&counts.failed===0,promotionReachedEnd:nextOffset==null||prior.promotionReachedEnd===true,
+      promotedWorks:counts.promoted,missingWorks:counts.missing,failedWorks:counts.failed,lastPromotionAt:now()};
     await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET orchestration_json=?,updated_at=? WHERE session_id=?`,[JSON.stringify(state),now(),sessionId]);
     return{sessionId,surveyId:s.survey_id,verificationQuery:verifyQuery,pagination:{offset:pageOffset,limit:pageLimit,nextOffset,complete:nextOffset==null},promoted,missing,failed,orchestration:state,
       next:nextOffset==null?"Review all promoted PDF positions with evidence_context/evidence_review and record typed DIRECT facts before finalize.":`Call evidence_promote_notes again with offset=${nextOffset}.`};
@@ -964,15 +1108,33 @@
     if(!Zotero.ZotQueryLNE?.api?.surveyRun)throw new Error("LNE Survey tools are unavailable");
     const sweep=await runSweep({...args,question,includeLNE:true,requireLNE:false});
     if(!sweep.sessionId)return{...sweep,orchestrationStarted:false};
+    await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET orchestration_required=1,orchestration_json=? WHERE session_id=?`,[JSON.stringify({promotionComplete:false,promotionOffset:0}),sweep.sessionId]);
+    try {
     const identifierAnchors=[...(sweep.queryPlan?.mustGroups||[]),...(sweep.queryPlan?.shouldGroups||[])]
       .filter(g=>g.identifierType).map(g=>g.surface||g.aliases?.[0]).filter(Boolean);
     const survey=await Zotero.ZotQueryLNE.api.surveyRun(question,{preset:args.surveyPreset||"balanced",anchors:args.surveyAnchors||identifierAnchors,axes:args.surveyAxes,
-      maxQueries:args.surveyMaxQueries,maxPerQuery:args.surveyMaxPerQuery,hits:args.surveyHits,evidencePolicy:"paper-side-preferred",lexicalOnly:args.surveyLexicalOnly===true,pageSize:Math.max(12,num(args.promotionLimit,12,1,50))});
+      maxQueries:args.surveyMaxQueries,maxPerQuery:args.surveyMaxPerQuery,hits:args.surveyHits,evidencePolicy:"paper-side-preferred",lexicalOnly:args.surveyLexicalOnly===true,pageSize:num(args.promotionLimit,50,1,50)});
     const orchestration={surveyId:survey.surveyId,promotionOffset:0,promotionComplete:false,promotedWorks:0,missingWorks:0,failedWorks:0,startedAt:now()};
     await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET survey_id=?,orchestration_required=1,orchestration_json=?,updated_at=? WHERE session_id=?`,[survey.surveyId,JSON.stringify(orchestration),now(),sweep.sessionId]);
-    const promotion=await promoteSurveyNotes(sweep.sessionId,{offset:0,limit:num(args.promotionLimit,12,1,50),query:args.verificationQuery||null,aliases:args.verificationAliases||[]});
+    const promotion=await promoteSurveyNotes(sweep.sessionId,{offset:0,limit:num(args.promotionLimit,50,1,50),query:args.verificationQuery||null,aliases:args.verificationAliases||[]});
     return{orchestrationStarted:true,sessionId:sweep.sessionId,surveyId:survey.surveyId,sweep,survey:{surveyId:survey.surveyId,plan:survey.plan,coverage:survey.coverage,totals:survey.totals,pagination:survey.pagination},promotion,
       workflow:["LNE survey and PDF sweep created together","core paper-side note candidates promoted to same-parent PDF verification","page and review every gate-required PDF position","record type-matching DIRECT FactRecords","call evidence_finalize"]};
+    } catch(error) {
+      return {sessionId:sweep.sessionId,orchestrationStarted:false,isError:true,error:`PDF session was preserved but survey startup/promotion failed: ${error.message}`,next:"Do not create another session. Read evidence_next_actions; a failed survey startup requires evidence_retry_orchestration."};
+    }
+  }
+
+  async function retryOrchestration(sessionId,args={}) {
+    await ensureResearchSchema();
+    const s=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.sessions WHERE session_id=?`,[sessionId]))?.[0];
+    if(!s)throw new Error("Unknown session");
+    if(!s.survey_id){
+      const contract=jsonObject(s.query_json,{}).queryContract||{};
+      const anchors=[...(contract.mustGroups||[]),...(contract.shouldGroups||[])].filter(g=>g.identifierType).map(g=>g.surface||g.aliases?.[0]).filter(Boolean);
+      const survey=await Zotero.ZotQueryLNE.api.surveyRun(s.question,{preset:args.surveyPreset||"balanced",anchors,evidencePolicy:"paper-side-preferred",lexicalOnly:args.surveyLexicalOnly===true,pageSize:50});
+      await Zotero.DB.queryAsync(`UPDATE ${RDB}.sessions SET survey_id=?,orchestration_required=1,orchestration_json=?,updated_at=? WHERE session_id=?`,[survey.surveyId,JSON.stringify({surveyId:survey.surveyId,promotionOffset:0,promotionComplete:false}),now(),sessionId]);
+    }
+    return promoteSurveyNotes(sessionId,{offset:s.survey_id?jsonObject(s.orchestration_json,{}).promotionOffset||0:0,limit:50});
   }
 
   async function finalize(sessionId) {
@@ -1048,23 +1210,28 @@
   const Finalize=Endpoint(["POST"], req=>guard(req,()=>finalize(req.data?.sessionId)));
 
   // ---------- Unified MCP ----------
+  const assessmentSchema={type:"object",properties:{relation:{type:"string",enum:["full","partial","context","contradicts"]},sourceMeaning:{type:"string",description:"What the source actually establishes, with its entity, scope and conditions. Do not paraphrase a mapping as direct observation."},rationale:{type:"string",description:"Why this evidence does or does not answer the ENTIRE declared slot; literal occurrence alone is insufficient."},limitations:{type:"string"}},required:["relation","sourceMeaning","rationale"]};
+  const factRequestSchema={type:"object",properties:{slots:{type:"array",items:{type:"object",properties:{id:{type:"string"},type:{type:"string",enum:[...FACT_TYPES]},required:{type:"boolean"},description:{type:"string"},entity:{type:"string"},numbering:{type:"string"},unit:{type:"string"},expectedLength:{type:"integer",minimum:1},lengthFromSlot:{type:"string",description:"For an entire sequence linked to an inclusive coordinate interval, name its range slot. Partial motifs cannot satisfy this length check."}},required:["id","type","description"]}}}};
   const groupSchema={type:"array",items:{type:"object",properties:{id:{type:"string"},aliases:{type:"array",items:{type:"string"}},role:{type:"string",enum:["MUST","SHOULD"]}},required:["aliases"]}};
   const planProps={question:{type:"string"},aliases:{type:"array",items:{type:"string"},description:"Flat caller-supplied aliases. Prefer named aliasGroups when identity roles matter."},aliasGroups:groupSchema,mustGroups:groupSchema,shouldGroups:groupSchema,mustNot:{type:"array",items:{type:"string"}},evidenceTypeHints:{type:"array",items:{type:"string"},description:"Optional generic evidence scopes/methods to rank earlier, e.g. DOSE_RESPONSE, BINDING_RESULT, HDX_MS, CONSTRUCT_DEFINITION."},maxRawPositions:{type:"integer",minimum:50,maximum:1000000},autoTighten:{type:"boolean"}};
   const tools=[
+    {name:"evidence_retry_orchestration",description:"Recover a failed survey startup or promotion within the existing PDF research session; never creates a second evidence session.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},surveyPreset:{type:"string",enum:["quick","balanced","exhaustive","audit"]},surveyLexicalOnly:{type:"boolean"}},required:["sessionId"]}},
+    {name:"evidence_assess_fact",description:"Reassess an existing fact without deleting its value or provenance. Read the original context and explicitly distinguish whole-slot support from partial evidence. This is also how legacy unassessed facts become eligible for slot closure.",inputSchema:{type:"object",properties:{factId:{type:"string"},assessment:assessmentSchema},required:["factId","assessment"]}},
+    {name:"evidence_next_actions",description:"Read bounded, actionable remaining work for the current session, including pending positions, slot-level assessment problems, conflicts and the note-promotion cursor. This does not mark positions listed or read.",inputSchema:{type:"object",properties:{sessionId:{type:"string"}},required:["sessionId"]}},
     {name:"quick_search",description:"Fast ZotQuery Search semantic/hybrid discovery. Discovery hits are navigation only; use the evidence workflow for auditable claims.",inputSchema:{type:"object",properties:{query:{type:"string"},max_results:{type:"integer",minimum:1,maximum:100},min_similarity:{type:"number",minimum:0,maximum:1}},required:["query"]}},
     {name:"research_health",description:"Check ZotQuery Search, Evidence, Core and Survey stores, and query embedding readiness.",inputSchema:{type:"object",properties:{}}},
     {name:"evidence_plan",description:"Non-mutating Query Contract v2 preflight. Supports quoted/+ MUST terms, - exclusions, {a|b} alias groups, structured must/should/alias groups, protected identifiers, cardinality estimates and surface-preservation audit. Use this before broad sweeps.",inputSchema:{type:"object",properties:planProps,required:["question"]}},
-    {name:"evidence_research_start",description:"Preferred unified entry point. Starts the PDF Coverage Gate and a persistent LNE Survey together, then automatically promotes the first page of core paper-side note candidates into same-parent PDF verification. Preserves Unicode identifier surfaces and never invents ASCII aliases.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:{type:"object"},readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5},surveyPreset:{type:"string",enum:["quick","balanced","exhaustive","audit"]},surveyAnchors:{},surveyAxes:{},surveyMaxQueries:{type:"integer",minimum:1,maximum:20},surveyMaxPerQuery:{type:"integer",minimum:1,maximum:500},surveyHits:{type:"integer",minimum:1,maximum:8},surveyLexicalOnly:{type:"boolean"},promotionLimit:{type:"integer",minimum:1,maximum:50},verificationQuery:{type:"string"},verificationAliases:{type:"array",items:{type:"string"}}},required:["question"]}},
-    {name:"evidence_sweep",description:"Start Coverage Gate v2. Exhaustiveness is defined over the hard Query Contract (MUST groups AND; aliases within a group OR; exclusions NOT). QUERY_EXHAUSTIVE clusters adjacent duplicate lexical hits into review units; semantic and LNE hits are navigation-only unless explicitly required/verified.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},includeLNE:{type:"boolean"},requireLNE:{type:"boolean"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:{type:"object"},readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5}},required:["question"]}},
+    {name:"evidence_research_start",description:"Preferred unified entry point. Starts the PDF Coverage Gate and a persistent LNE Survey together, then automatically promotes the first page of core paper-side note candidates into same-parent PDF verification. Preserves Unicode identifier surfaces and never invents ASCII aliases.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:factRequestSchema,readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5},surveyPreset:{type:"string",enum:["quick","balanced","exhaustive","audit"]},surveyAnchors:{},surveyAxes:{},surveyMaxQueries:{type:"integer",minimum:1,maximum:20},surveyMaxPerQuery:{type:"integer",minimum:1,maximum:500},surveyHits:{type:"integer",minimum:1,maximum:8},surveyLexicalOnly:{type:"boolean"},promotionLimit:{type:"integer",minimum:1,maximum:50},verificationQuery:{type:"string"},verificationAliases:{type:"array",items:{type:"string"}}},required:["question"]}},
+    {name:"evidence_sweep",description:"Start Coverage Gate v2. Exhaustiveness is defined over the hard Query Contract (MUST groups AND; aliases within a group OR; exclusions NOT). QUERY_EXHAUSTIVE clusters adjacent duplicate lexical hits into review units; semantic and LNE hits are navigation-only unless explicitly required/verified.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},includeLNE:{type:"boolean"},requireLNE:{type:"boolean"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:factRequestSchema,readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5}},required:["question"]}},
     {name:"evidence_positions",description:"Page evidence positions. Use compact=true for model context; nextOffset must be followed to null. scope=coverage (default) returns gate-required clusters; scope=navigation returns supplemental hits.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:1000},compact:{type:"boolean"},status:{type:"string"},scope:{type:"string",enum:["coverage","navigation","all"]}},required:["sessionId"]}},
     {name:"evidence_context",description:"Read sufficient surrounding context for one position. level 0=matched chunk, 1=±2 chunks/default, 2=±5, 3=±12; note positions use LNE trace with analogous expansion.",inputSchema:{type:"object",properties:{positionId:{type:"string"},level:{type:"integer",minimum:0,maximum:3}},required:["positionId"]}},
     {name:"evidence_promote_context_chunk",description:"Promote a specific adjacent PDF chunk seen in evidence_context into the same session as a required review unit. Use when the exact quoted answer is in a neighbor of the matched chunk; then open and review the promoted position before recording a fact.",inputSchema:{type:"object",properties:{positionId:{type:"string"},chunkIndex:{type:"integer",minimum:0}},required:["positionId","chunkIndex"]}},
     {name:"evidence_document",description:"Page every indexed chunk of one coverage-candidate PDF. Required to exhaustion only for FULL_TEXT_CANDIDATES sessions.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},workKey:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:50}},required:["sessionId","workKey"]}},
     {name:"evidence_review",description:"Record an explicit decision after evidence_context. supportsQuestion and a short reason are mandatory. Recommended scopes: DIRECT_FACT, EXPERIMENT_RESULT, QUANTITATIVE_MEASUREMENT, SEQUENCE_DEFINITION, STRUCTURE_OBSERVATION, CONSTRUCT_DEFINITION, REGION_MAPPING, BINDING_RESULT, METHOD, AUTHOR_INTERPRETATION, BACKGROUND, INFERENCE.",inputSchema:{type:"object",properties:{positionId:{type:"string"},reviewStatus:{type:"string",enum:["reviewed","excluded","conflicting","unresolved","needs_context"]},contextLevel:{type:"integer"},evidenceScope:{type:"string"},supportsQuestion:{type:"string",enum:["yes","partial","no","contradicts","unclear"]},reason:{type:"string"},evidence:{type:"object"}},required:["positionId","reviewStatus","supportsQuestion","reason"]}},
-    {name:"evidence_fact",description:"Create a typed FactRecord from a context-read position. DIRECT facts require an original PDF locator and a value occurring literally in the verified sourceQuote. Derived or converted values must be INFERRED and cannot close EXACT slots.",inputSchema:{type:"object",properties:{positionId:{type:"string"},slot:{type:"string"},entity:{type:"string"},value:{type:["string","number"]},valueType:{type:"string",enum:["naming_equivalence","construct_boundary","structure_resolved_range","secondary_structure_range","functional_motif","mutation_site","hdx_peptide","sequence","sequence_alignment","homology_mapping","quantitative_measurement","mechanism","other","exact_value","residue_range","binding_or_activity_value"]},unit:{type:"string"},numbering:{type:"string"},evidenceStatus:{type:"string",enum:["DIRECT","INFERRED","SECONDARY"]},sourceQuote:{type:"string"},locator:{type:"object"},notes:{type:"string"}},required:["positionId","slot","value","valueType","evidenceStatus","sourceQuote"]}},
+    {name:"evidence_fact",description:"Create a typed FactRecord from a context-read position. DIRECT facts require an original PDF locator and a value occurring literally in the verified sourceQuote, plus an explicit assessment of whether this answers the WHOLE slot. A partial motif, example, or related measurement is partial support, not a full answer. Derived or converted values must be INFERRED and cannot close EXACT slots.",inputSchema:{type:"object",properties:{positionId:{type:"string"},slot:{type:"string"},entity:{type:"string"},value:{type:["string","number"]},valueType:{type:"string",enum:["naming_equivalence","construct_boundary","structure_resolved_range","secondary_structure_range","functional_motif","mutation_site","hdx_peptide","sequence","sequence_alignment","homology_mapping","quantitative_measurement","mechanism","other","exact_value","residue_range","binding_or_activity_value"]},unit:{type:"string"},numbering:{type:"string"},evidenceStatus:{type:"string",enum:["DIRECT","INFERRED","SECONDARY"]},sourceQuote:{type:"string"},locator:{type:"object"},notes:{type:"string"},assessment:assessmentSchema},required:["positionId","slot","value","valueType","evidenceStatus","sourceQuote","assessment"]}},
     {name:"evidence_resolve_conflict",description:"Adjudicate a DIRECT conflict by selecting a source-backed FactRecord, citing another context-read original PDF passage whose quote explicitly supports that value, and documenting the reason. Older unanchored resolutions remain blocking.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},conflictKey:{type:"string"},selectedFactId:{type:"string"},resolutionPositionId:{type:"string"},resolutionQuote:{type:"string"},reason:{type:"string"}},required:["sessionId","conflictKey","selectedFactId","resolutionPositionId","resolutionQuote","reason"]}},
     {name:"evidence_verify_note",description:"Search only the same Zotero parent PDF for a navigation-note claim. Located PDF passages are promoted into the coverage universe and must be reviewed.",inputSchema:{type:"object",properties:{positionId:{type:"string"},query:{type:"string"},aliases:{type:"array",items:{type:"string"}},limit:{type:"integer",minimum:1,maximum:200}},required:["positionId"]}},
-    {name:"evidence_promote_notes",description:"Continue the unified LNE-to-PDF bridge for an evidence_research_start session. Pages core Survey works, verifies matching note candidates only against their same-parent PDFs, and registers located PDF passages as required review units.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:50},query:{type:"string"},aliases:{type:"array",items:{type:"string"}}},required:["sessionId"]}},
+    {name:"evidence_promote_notes",description:"Continue the unified LNE-to-PDF bridge for an evidence_research_start session. Default limit 50; follow nextOffset until null. Pages core Survey works, verifies matching note candidates only against their same-parent PDFs, and registers located PDF passages as required review units. Returned candidate summaries are navigation, not source reading; use evidence_positions and evidence_context for original PDF support.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:50},query:{type:"string"},aliases:{type:"array",items:{type:"string"}}},required:["sessionId"]}},
     {name:"evidence_session",description:"Return the auditable raw-position/navigation/review-unit coverage ledger and Query Contract.",inputSchema:{type:"object",properties:{sessionId:{type:"string"}},required:["sessionId"]}},
     {name:"evidence_finalize",description:"Apply Coverage Gate v2. Synthesis requires 100% listing/context/review of hard-query evidence clusters, closure of every declared exact-fact slot by type-matching direct PDF records, and resolution of value or cross-type interval conflicts.",inputSchema:{type:"object",properties:{sessionId:{type:"string"}},required:["sessionId"]}},
     {name:"research_result",description:"Read a canonical, paginated ResearchResult from a persisted session. Retrieval, screening, context reading, full-text paging and deep reading are counted separately; unknown counts remain null.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:500}},required:["sessionId"]}},
@@ -1087,10 +1254,14 @@
     const suffix=String(name).slice("zotquery_".length);
     return suffix.startsWith("evidence_")||suffix.startsWith("research_")||suffix.startsWith("note_profile_")||suffix.startsWith("output_profile_")?suffix:`lne_${suffix}`;
   };
-  const allTools=()=>[...tools,...lneTools()].map(tool=>({...tool,name:publicToolName(tool.name)}));
-  const mcpResult=(id,obj,isError=false)=>[200,"application/json",JSON.stringify({jsonrpc:"2.0",id:id??null,result:{content:[{type:"text",text:JSON.stringify(obj,null,2)}],...(isError?{isError:true}:{})}})];
+  const allTools=()=>[...tools,...lneTools(),...(Zotero.ZotQueryVision?.toolDefinitions?.()||[])].map(tool=>({...tool,name:publicToolName(tool.name)}));
+  const mcpResult=(id,obj,isError=false)=>{const images=Array.isArray(obj?.images)?obj.images:null,data=images?{...obj,images:undefined}:obj;return [200,"application/json",JSON.stringify({jsonrpc:"2.0",id:id??null,result:{content:[{type:"text",text:JSON.stringify(data,null,2)},...(images?images.filter(x=>x.mimeType==='image/png'&&typeof x.data==='string').map(x=>({type:'image',mimeType:x.mimeType,data:x.data})):[])],...(isError?{isError:true}:{})}})];};
   async function callTool(name,a){
     name=internalToolName(name);
+    if(['evidence_page_image','evidence_visual_observe','evidence_visual_list'].includes(name))return Zotero.ZotQueryVision.callTool(name,a);
+    if(name==="evidence_assess_fact")return assessFact(a);
+    if(name==="evidence_retry_orchestration")return retryOrchestration(a.sessionId,a);
+    if(name==="evidence_next_actions")return nextActions(a.sessionId);
     if(name==="research_result")return researchResult(a.sessionId,a);
     if(name==="research_render")return Zotero.ZotQueryOutputProfiles.render(await researchResult(a.sessionId,a),a.profileId||Zotero.Prefs.get("zotquery.outputProfile",true)||"standard");
     if(name==="note_profile_list")return {activeProfile:Zotero.ZotQueryNoteProfiles.active(),profiles:Zotero.ZotQueryNoteProfiles.list()};
@@ -1114,7 +1285,7 @@
     "/zotquery/health":Health,"/zotquery/lexical":Lexical,"/zotquery/plan":Plan,"/zotquery/context":Context,"/zotquery/sweep":Sweep,"/zotquery/session":Session,"/zotquery/positions":Positions,"/zotquery/document":Document,"/zotquery/review":Review,"/zotquery/fact":Fact,"/zotquery/resolve":Resolve,"/zotquery/verify-note":VerifyNote,"/zotquery/finalize":Finalize,"/zotquery/mcp":MCP
   };
 
-  async function startup(){if(started)return;ensureAuthToken();await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,toolDefinitions:allTools,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
+  async function startup(){if(started)return;ensureAuthToken();await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,assessFact,nextActions,validateSessionScope,toolDefinitions:allTools,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
   async function shutdown(){for(const p of ENDPOINTS)try{delete Zotero.Server.Endpoints[p];}catch{}try{const l=await Zotero.DB.queryAsync("PRAGMA database_list");if(l?.some(r=>r.name===RDB))await Zotero.DB.queryAsync(`DETACH DATABASE ${RDB}`);}catch{}delete Zotero.ZotQueryResearch;started=false;log("stopped");}
 
   _globalThis.ZotQueryResearchBootstrap={startup,shutdown,_defaultFactRequest:defaultFactRequest};

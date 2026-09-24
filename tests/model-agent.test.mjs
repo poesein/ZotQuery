@@ -44,7 +44,7 @@ const sandbox = {
       set(key, value) { if (typeof value === "number" && !Number.isInteger(value)) throw new Error(`floating preference rejected: ${key}`); prefs.set(key, value); },
       clear(key) { prefs.delete(key); },
     },
-    HTTP: { async request(method, url, options) { requests.push({ method, url, options }); return { response: scripted.shift() }; } },
+    HTTP: { async request(method, url, options) { requests.push({ method, url, options }); const next = scripted.shift(); if (!next) throw Error("Test response queue exhausted"); return { response: typeof next === "function" ? next(JSON.parse(options.body)) : next }; } },
     File: { async getResourceAsync() { throw new Error("Bundled templates must never be loaded"); } },
     debug() {},
     ZotQueryResearch: {
@@ -71,6 +71,9 @@ assert.throws(() => api._validatedBaseURL("http://example.com/v1"), /HTTPS/);
 assert.equal(api._validatedBaseURL("http://192.168.1.20:8000/v1"), "http://192.168.1.20:8000/v1");
 
 const configInput = { provider: "deepseek", baseURL: "https://api.deepseek.com", model: "deepseek-chat", maxSteps: 8, timeoutSeconds: 60, temperature: 0.1, reasoningEffort: "high" };
+await assert.rejects(api.saveConfig({...configInput,maxTokens:12.5},{apiKey:'must-not-save'}),/输出预算/);
+await assert.rejects(api.saveConfig({...configInput,maxTokensMode:'unlimited'},{apiKey:'must-not-save'}),/预算模式/);
+assert.equal(prefs.size,0);assert.equal(logins.length,0);
 credentialWriteGate = new Promise(resolve => { releaseCredentialWrite = resolve; });
 let saveSettled = false;
 const saving = api.saveConfig(configInput, { apiKey: "unit-test-key" }).then(result => { saveSettled = true; return result; });
@@ -130,7 +133,10 @@ assert.equal((await api.getTemplate()).source, "none");
 assert.equal(requests.length, 0, "unavailable templates must never fall back or send API requests");
 await api.setTemplatePath("D:\\templates\\custom.md");
 
-scripted = [{ choices: [{ message: { content: "OK" } }] }];
+scripted = [
+  { choices: [{ message: { content: "", reasoning_content: "synthetic reasoning", tool_calls: [{ id: "probe-1", function: { name: "zotquery_connection_probe", arguments: "{}" } }] } }] },
+  body => { assert.equal(body.messages[2].reasoning_content, "synthetic reasoning"); return { choices: [{ message: { content: JSON.parse(body.messages.at(-1).content).receipt } }] }; },
+];
 const test = await api.testConnection();
 assert.equal(test.ok, true);
 assert.equal(requests.at(-1).options.headers.Authorization, "Bearer unit-test-key");
@@ -140,7 +146,10 @@ await api._requestTurn({ provider: "openai", format: "openai", baseURL: "https:/
 assert.equal(JSON.parse(requests.at(-1).options.body).reasoning_effort, "high");
 scripted = [{ message: { content: "OK" } }];
 await api._requestTurn({ provider: "ollama", format: "ollama", baseURL: "http://127.0.0.1:11434", model: "qwen3", apiKey: "", timeoutSeconds: 60, temperature: 0.1, maxTokens: 1024, reasoningEffort: "low" }, [{ role: "user", content: "test" }], []);
-assert.equal(JSON.parse(requests.at(-1).options.body).think, "low");
+assert.equal(JSON.parse(requests.at(-1).options.body).think, true, "Qwen3 uses the native on/off thinking switch");
+scripted = [{ message: { content: "OK" } }];
+await api._requestTurn({ provider: "ollama", format: "ollama", baseURL: "http://127.0.0.1:11434", model: "gpt-oss:20b", apiKey: "", timeoutSeconds: 60, temperature: 0.1, maxTokens: 1024, reasoningEffort: "max" }, [{ role: "user", content: "test" }], []);
+assert.equal(JSON.parse(requests.at(-1).options.body).think, "high", "gpt-oss supports named levels up to high");
 
 const agentTurns = [
   { choices: [{ message: { content: "", tool_calls: [
@@ -164,13 +173,14 @@ assert.deepEqual(toolCalls, ["zotquery_health", "zotquery_evidence_plan", "zotqu
 assert.match(completed.markdown, /Model-written answer/);
 assert.equal(completed.answerKind, "verified-answer");
 const writingBody = JSON.parse(requests.at(-1).options.body);
-assert.equal(Object.hasOwn(writingBody, "tools"), false, "writing pass is separate from tool execution");
+assert.equal(Object.hasOwn(writingBody, "tools"), true, "writer can inspect missing evidence");
 assert.match(writingBody.messages[0].content, /<output-template>/);
 assert.doesNotMatch(writingBody.messages[1].content, /# AUDIT|# Evidence answer/);
-assert.match(writingBody.messages[1].content, /Synthetic source passage/);
+assert.ok(writingBody.messages.some(m => m.role === "tool" && m.content.includes("Synthetic source passage")), "full tool history survives the phase transition");
+assert.match(writingBody.messages[0].content, /先前模型分析和草稿不构成证据/);
 
 scripted = [...agentTurns, agentTurns[1], agentTurns[1], limitedAnswer]; blocked = true; toolCalls.length = 0;
-const stopped = await api.runAgent({ question: "Q", profileId: "standard" });
+const stopped = await api.runAgent({ question: "Q", profileId: "standard", config: { maxSteps: 4 } });
 assert.equal(stopped.blocked, true);
 assert.match(stopped.markdown, /目前提供的证据还无法确认/);
 assert.match(stopped.markdown, /核验状态：未完成/);
@@ -197,7 +207,7 @@ const freeWritingPrompt = JSON.parse(requests.at(-1).options.body).messages[0].c
 assert.match(freeWritingPrompt, /未指定模板/);
 assert.doesNotMatch(freeWritingPrompt, /<output-template>/);
 scripted = [...agentTurns, agentTurns[1], agentTurns[1], limitedAnswer]; blocked = true;
-const blockedWithoutTemplate = await api.runAgent({ question: "Q" });
+const blockedWithoutTemplate = await api.runAgent({ question: "Q", config: { maxSteps: 4 } });
 assert.equal(blockedWithoutTemplate.blocked, true, "optional templates must never bypass the evidence gate");
 assert.match(blockedWithoutTemplate.markdown, /目前提供的证据还无法确认/);
 assert.doesNotMatch(blockedWithoutTemplate.markdown, /# STAGED/);
@@ -207,6 +217,6 @@ const exhausted = await api.runAgent({ question: "Q", config: { maxSteps: 2 } })
 assert.equal(exhausted.answerKind, "limited-answer", "step exhaustion must still use an explicit model writing pass");
 assert.match(exhausted.markdown, /目前提供的证据还无法确认/);
 scripted = [...agentTurns, { choices: [{ message: { content: "" } }] }]; blocked = false;
-await assert.rejects(api.runAgent({ question: "Q" }), /不会用台账替代回答/);
+await assert.rejects(api.runAgent({ question: "Q" }), error => error.code === "EMPTY_RESPONSE");
 
-console.log("3.1.8 model-agent provider, secret, tool-loop, and gate contracts passed");
+console.log("3.1.17 model-agent provider, secret, tool-loop, and gate contracts passed");

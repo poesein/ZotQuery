@@ -32,4 +32,4 @@ result=1;await click('choose-template');assert.equal(imports.length,2);
 result=0;file=null;await click('choose-template');assert.equal(imports.length,2);assert.match(node('model-settings-status').textContent,/有效路径/);
 await click('reset-template');assert.equal(clears,1);
 const oldHandler=node('model-save').handlers.click;await ctx.Zotero.ZotQueryModelPreferences.bind({document:doc});assert.equal(node('model-save').handlers.click,oldHandler);
-console.log('3.1.8 preferences: async credential save, failure retry, transient test, preserved values, template import/cancel/clear passed');
+console.log('3.1.17 preferences: async credential save, failure retry, transient test, preserved values, template import/cancel/clear passed');

@@ -66,4 +66,4 @@ pageLink.handlers.click({ preventDefault() { prevented = true; } });
 assert.equal(prevented, true);
 assert.equal(opened, "zotero://open-pdf/library/items/PDFKEY01?page=7");
 assert.ok(card.children.some(x => x.textContent.includes("语段 chunk 12")));
-console.log("3.1.8 evidence source links, collection/note/PDF routing, and ambiguity regressions passed");
+console.log("3.1.17 evidence source links, collection/note/PDF routing, and ambiguity regressions passed");

@@ -268,7 +268,7 @@ assert(researchSource.includes("led.synthesisAllowed===true&&blockers.length===0
 assert(researchSource.includes("if(!directValueSupported(value,quote))throw"), "DIRECT insertion must bind the value to its verified quote");
 assert(researchSource.includes("resolution_position_id") && researchSource.includes("resolution_quote"), "conflict adjudication must persist PDF provenance");
 
-assert.equal(manifest.version, "3.1.8", "manifest must identify the local candidate version");
+assert.equal(manifest.version, "3.1.17", "manifest must identify the local candidate version");
 assert(nativeSource.includes('if (explicitProfile && !noteProfiles().matches'), "a fixed Note Profile must not bypass index scope");
 assert(nativeSource.includes('reason: "library-out-of-scope"'), "item notifier must honor Note library scope");
 assert(/^https:\/\//.test(manifest.applications.zotero.update_url), "Zotero requires an HTTPS update_url to accept the manifest");
@@ -302,13 +302,13 @@ const expectedLNETools = [
   "lne_survey_review", "lne_survey_fact", "lne_survey_deep_read",
 ];
 for (const name of expectedLNETools) assert(toolsSource.includes(`"${name}"`), `missing V3-compatible tool ${name}`);
-assert(uiSource.includes("openDashboard") && uiSource.includes("ZotQuery 研究工作台"), "custom UI must replace upstream discovery entry points");
+assert(uiSource.includes("openDashboard") && uiSource.includes("ZotQuery 研究台"), "custom UI must replace upstream discovery entry points");
 assert(uiSource.includes('#menu_ToolsPopup menuitem') && uiSource.includes('toolsItem?.remove()'), "upstream Tools entry must be removed");
 assert(uiSource.includes('upstreamToolbarButton?.remove()'), "upstream toolbar entry must be removed");
 assert(uiSource.includes('zotquery-research-toolbar-button') && uiSource.includes('icons/favicon.png'), "toolbar must expose a workbench entry using the plugin icon");
 assert(uiSource.includes('prefs-navigation') && uiSource.includes('ZotQuery'), "preferences navigation must be rebranded");
-assert(uiSource.includes("bindProfilePreferences(win)"), "Note and Output settings must be bound");
-assert(preferencesView.includes('id="lne-note-profile"') && preferencesView.includes('id="lne-output-profile"'), "settings must expose profile selectors");
+assert(uiSource.includes("bindProfilePreferences(win)"), "Note parsing settings must be bound");
+assert(preferencesView.includes('id="lne-note-profile"') && !preferencesView.includes('id="lne-output-profile"'), "settings retain note parsing but remove obsolete output profile UI");
 assert(preferencesView.includes('id="zotquery-group-note-indexing"') && preferencesView.includes('id="lne-note-library-scope"') && preferencesView.includes('id="lne-note-autosync"'), "Note indexing must have its own settings section");
 assert(uiSource.includes('"zotquery.lneNative.libraryScope"') && uiSource.includes('"zotquery.lneNative.autoSync"'), "Note index controls must persist their preferences");
 assert(uiSource.includes('root.getAttribute("data-lne-bound")'), "settings binding guard must be per pane, not per preferences window");
@@ -331,15 +331,15 @@ localeSandbox.Zotero.locale = "zh-CN";
 labelNode.label = "笔记索引";
 localeSandbox.localizePreferences({ document: doc });
 assert.equal(labelNode.label, "笔记索引", "Chinese Zotero locale must retain Chinese labels");
-assert(preferencesView.includes('id="lne-note-profile-json"') && preferencesView.includes('id="lne-output-profile-json"'), "settings must support JSON profile import");
+assert(preferencesView.includes('id="lne-note-profile-json"') && !preferencesView.includes('id="lne-output-profile-json"'), "only advanced note parsing JSON import remains in settings");
 assert(prefsSource.includes('zotquery.outputProfile'), "default output profile preference must exist");
 assert(researchSource.includes('Zotero.Prefs.get("zotquery.outputProfile",true)'), "research rendering must honor the selected default profile");
 assert(bootstrapSource.includes("ZotQueryStartupErrors"), "startup failures must retain concrete diagnostics");
 assert(researchSource.includes('`zotquery_${String(name).replace(/^lne_/,"")}`'), "MCP must expose ZotQuery tool names");
 assert(researchSource.includes('source:"protected-identity"'), "distinct protected identifiers must remain MUST terms");
 assert(nativeSource.includes('queryReady: !!probe?.ready'), "health must report live query readiness separately from vector coverage");
-assert(preferencesView.includes("研究系统状态") && preferencesView.includes("共享向量模型") && preferencesView.includes("Agent 与统一 MCP"), "preferences must use the Research workflow information architecture");
-assert(dashboardView.includes("仅创建人工研究会话") && dashboardView.includes("记录 DIRECT FactRecord") && dashboardView.includes("检查证据完整性"), "dashboard must expose optional evidence review controls");
+assert(preferencesView.includes("模型与回答") && preferencesView.includes("检索与索引") && preferencesView.includes("外部模型接入"), "preferences must group model, retrieval and external client settings");
+assert(dashboardView.includes("创建人工研究") && dashboardView.includes("保存原文事实") && dashboardView.includes("检查证据完整性"), "dashboard must expose optional evidence review controls");
 
 // Each bundled search entry point embeds the server URL policy. Keep them in sync:
 // inference may use trusted LAN IPs, but the research MCP remains loopback-only.
@@ -450,4 +450,4 @@ for (const [file, endMarker, validatorName] of [
   assert.equal(rejectedAndFailed.active, local.id, "an unreachable new model must restore the previous active model even without adoption");
 }
 
-console.log("3.1.8 model-switch offline regression tests passed");
+console.log("3.1.17 model-switch offline regression tests passed");

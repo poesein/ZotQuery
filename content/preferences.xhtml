@@ -25,13 +25,43 @@
     #zotquery-group-output-model .model-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px 14px; margin:12px 0; }
     #zotquery-group-output-model .field { display:block; min-width:0; }
     #zotquery-group-output-model .field > span { display:block; margin-bottom:4px; font-size:12px; }
-    #zotquery-group-output-model input, #zotquery-group-output-model select { box-sizing:border-box; width:100%; min-width:0; padding:6px 8px; font:inherit; color:FieldText; background:Field; border:1px solid var(--material-border,#ccc); border-radius:5px; }
+    #zotquery-group-output-model input:not([type="checkbox"]), #zotquery-group-output-model select { box-sizing:border-box; width:100%; min-width:0; padding:6px 8px; font:inherit; color:FieldText; background:Field; border:1px solid var(--material-border,#ccc); border-radius:5px; }
     #zotquery-group-output-model .inline-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
     #zotquery-group-output-model button { font:inherit; padding:5px 10px; cursor:pointer; }
     #zotquery-group-output-model .model-actions { display:flex; flex-wrap:wrap; gap:7px; margin:9px 0; }
     #zotquery-group-output-model .callout { border-top:1px solid var(--material-border,#ddd); padding-top:12px; }
     #template-state { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; margin:6px 0; }
     @media(max-width:600px) { #zotquery-group-output-model .model-grid { grid-template-columns:1fr; } }
+    .prefs-subheading { font-size:12px; margin:16px 0 7px; }
+    #zotquery-preferences { --lne-accent:#2563eb; }
+    .lne-hero { background:var(--material-sidepane,#f5f7fb); padding:12px 14px; }
+    .lne-card-value { font-size:14px; } .lne-card-label { font-size:11px; }
+    details.zotquery-prefs-group { border:1px solid var(--material-border,#ddd); border-radius:8px; padding:4px 12px 10px; margin:0 0 12px; }
+    details.zotquery-prefs-group:not([open]) { padding-bottom:4px; }
+    details.zotquery-prefs-group > summary { font-size:14px; padding:9px 0; }
+    details.zotquery-prefs-group .zotquery-prefs-group { border:0; border-top:1px solid var(--material-border,#ddd); border-radius:0; padding:4px 0; margin:10px 0 0; }
+    .lne-row { display:grid; grid-template-columns:130px minmax(0,1fr); gap:8px 12px; align-items:center; }
+    .lne-row > checkbox { grid-column:1 / -1; margin:4px 0; }
+    .lne-row input { box-sizing:border-box; width:100%; min-width:0; }
+    .lne-row > menulist { min-width:0 !important; margin:0; }
+    .lne-row > button,.lne-row > .lne-note { grid-column:2; }
+    #zotquery-preferences hbox { flex-wrap:wrap; gap:6px; margin:8px 0; }
+    #zotquery-preferences textarea { box-sizing:border-box; padding:8px; font:12px/1.5 monospace; }
+    #zotquery-preferences button { min-height:32px; padding:0 12px; border:1px solid var(--material-border,#ccd0d5); border-radius:5px; color:FieldText; background:Field; font:inherit; line-height:normal; text-align:center; vertical-align:middle; -moz-box-align:center; -moz-box-pack:center; }
+    #zotquery-preferences button[label] { appearance:none; display:inline-flex; align-items:center; justify-content:center; }
+    #zotquery-preferences button:hover:not(:disabled) { border-color:var(--lne-accent); }
+    #zotquery-preferences #model-save { background:#2563eb; border-color:#2563eb; color:white; }
+    #zotquery-preferences button:disabled { opacity:.5; }
+    .vision-card { margin:14px 0; padding:12px; border:1px solid var(--material-border,#ddd); border-radius:7px; background:var(--material-sidepane,#f5f7fb); }
+    .toggle-line { display:flex; align-items:center; justify-content:space-between; gap:16px; cursor:pointer; }
+    .toggle-copy { display:grid; gap:3px; } .toggle-copy small { color:var(--lne-muted); font-size:11px; }
+    #zotquery-group-output-model input[type="checkbox"] { appearance:none; flex:0 0 34px; width:34px; height:20px; margin:0; padding:2px; border:1px solid var(--material-border,#aaa); border-radius:12px; background:#8791a0; cursor:pointer; }
+    #zotquery-group-output-model input[type="checkbox"]::before { content:""; display:block; width:14px; height:14px; border-radius:50%; background:white; transition:transform .12s; }
+    @media(prefers-reduced-motion:reduce) { #zotquery-group-output-model input[type="checkbox"]::before { transition:none; } }
+    #zotquery-group-output-model input[type="checkbox"]:checked { background:#2563eb; border-color:#2563eb; }
+    #zotquery-group-output-model input[type="checkbox"]:checked::before { transform:translateX(14px); }
+    #zotquery-preferences :focus-visible { outline:2px solid var(--lne-accent); outline-offset:2px; }
+    @media(max-width:500px) { .lne-row { grid-template-columns:100px minmax(0,1fr); }.lne-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   ]]></html:style>
 
   <html:div class="lne-hero">
@@ -40,21 +70,21 @@
   </html:div>
 
   <html:details class="zotquery-prefs-group" id="zotquery-group-status" open="">
-    <html:summary>研究系统状态</html:summary>
+    <html:summary>概览</html:summary>
     <html:div class="lne-grid">
       <html:div class="lne-card"><html:div class="lne-card-label">整体</html:div><html:div id="lne-health-overall" class="lne-card-value">检查中…</html:div></html:div>
       <html:div class="lne-card"><html:div class="lne-card-label">PDF 索引</html:div><html:div id="lne-health-pdfs" class="lne-card-value">-</html:div></html:div>
       <html:div class="lne-card"><html:div class="lne-card-label">阅读笔记</html:div><html:div id="lne-health-notes" class="lne-card-value">-</html:div></html:div>
-      <html:div class="lne-card"><html:div class="lne-card-label">Note segments</html:div><html:div id="lne-health-segments" class="lne-card-value">-</html:div></html:div>
-      <html:div class="lne-card"><html:div class="lne-card-label">Note 向量覆盖</html:div><html:div id="lne-health-vectors" class="lne-card-value">-</html:div></html:div>
-      <html:div class="lne-card"><html:div class="lne-card-label">共享模型合同</html:div><html:div id="lne-health-contract" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">笔记语段</html:div><html:div id="lne-health-segments" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">笔记向量</html:div><html:div id="lne-health-vectors" class="lne-card-value">-</html:div></html:div>
+      <html:div class="lne-card"><html:div class="lne-card-label">向量一致性</html:div><html:div id="lne-health-contract" class="lne-card-value">-</html:div></html:div>
     </html:div>
     <html:div class="lne-box">
       <html:div class="lne-card-label">PDF 与笔记共用模型</html:div>
       <html:div id="lne-health-model" style="font-weight:700;margin-top:3px;">-</html:div>
     </html:div>
     <hbox>
-      <button id="lne-open-dashboard" label="打开研究工作台"/>
+      <button id="lne-open-dashboard" label="打开研究台"/>
       <button id="lne-refresh-health" label="刷新状态"/>
     </hbox>
 
@@ -66,75 +96,39 @@
     </html:div>
   </html:details>
 
-  <html:details class="zotquery-prefs-group" id="zotquery-group-note-indexing" open="">
-    <html:summary>笔记索引</html:summary>
-    <html:div class="lne-row">
-      <html:label for="lne-note-library-scope">文库范围</html:label>
-      <menulist id="lne-note-library-scope" native="true"><menupopup>
-        <menuitem label="我的文库" value="user"/><menuitem label="全部文库" value="all"/>
-      </menupopup></menulist>
-      <html:label for="lne-note-scope">笔记范围</html:label>
-      <menulist id="lne-note-scope" native="true"><menupopup>
-        <menuitem label="兼容旧版精读笔记" value="reading-notes"/>
-        <menuitem label="全部笔记" value="all"/>
-        <menuitem label="按标题或内容字面量" value="pattern"/>
-      </menupopup></menulist>
-      <html:label for="lne-note-title-pattern">匹配字面量</html:label><html:input id="lne-note-title-pattern" class="lne-input" type="text"/>
-    </html:div>
-    <html:div class="lne-row">
-      <checkbox id="lne-note-autosync" label="自动跟踪笔记变更" native="true"/>
-      <html:label for="lne-note-profile">解析配置</html:label>
-      <menulist id="lne-note-profile" native="true" style="min-width:240px"><menupopup/></menulist>
-    </html:div>
-    <hbox><button id="lne-note-profile-apply" label="保存笔记索引设置"/><button id="lne-sync-notes" label="立即同步笔记与向量"/></hbox>
-    <html:div id="lne-note-profile-status" class="lne-note">读取中…</html:div>
-  </html:details>
-
-  <html:details class="zotquery-prefs-group" id="zotquery-group-indexing" open="">
-    <html:summary>PDF 原文索引</html:summary>
-    <html:p class="lne-note">PDF chunks 是精确事实和稳定 locator 的原始证据层。更新会跳过已完成项目；重建只在模型、范围或切分策略发生实质变化时使用。</html:p>
-    <hbox>
-      <button id="zotquery-update-index" label="更新 PDF 索引"/>
-      <button id="zotquery-rebuild-index" label="重建 PDF 索引"/>
-      <button id="zotquery-refresh-stats" label="刷新 PDF 统计"/>
-    </hbox>
-    <html:div class="lne-row">
-      <html:label for="zotquery-pref-indexingMode">内容范围</html:label>
-      <menulist id="zotquery-pref-indexingMode" native="true"><menupopup>
-        <menuitem label="仅题名与摘要" value="abstract"/><menuitem label="完整 PDF（推荐）" value="full"/>
-      </menupopup></menulist>
-      <html:label for="zotquery-pref-indexScope">文库范围</html:label>
-      <menulist id="zotquery-pref-indexScope" native="true"><menupopup>
-        <menuitem label="我的文库" value="user"/><menuitem label="全部文库" value="all"/>
-      </menupopup></menulist>
-      <checkbox id="zotquery-pref-autoIndex" label="自动索引新文献" native="true"/>
-    </html:div>
-    <html:div id="zotquery-autoindex-delay-row" class="lne-row">
-      <html:label for="zotquery-pref-autoIndexDelay">自动索引延迟（秒）</html:label><html:input id="zotquery-pref-autoIndexDelay" class="lne-input" type="number" min="1" max="300" value="10"/>
-      <checkbox id="zotquery-pref-excludeBooks" label="排除书籍" native="true"/>
-      <html:label for="zotquery-pref-excludeTag">排除标签</html:label><html:input id="zotquery-pref-excludeTag" class="lne-input" type="text" value="zotquery-exclude"/>
-    </html:div>
-  </html:details>
-
   <html:details class="zotquery-prefs-group" id="zotquery-group-output-model" open="">
-    <html:summary>输出大模型与 Markdown 模板</html:summary>
+    <html:summary>模型与回答</html:summary>
     <html:p class="lne-note">模型通过内置工具检索、阅读和核验证据，再生成回答。配置只需在此保存一次。</html:p>
+        <html:h3 class="prefs-subheading">API 连接</html:h3>
     <html:div class="model-grid">
       <html:label class="field"><html:span>服务商</html:span><html:select id="model-provider"></html:select></html:label>
       <html:label class="field"><html:span>API Base URL</html:span><html:input id="model-base-url" type="url"/></html:label>
       <html:label class="field"><html:span>模型名称</html:span><html:input id="model-name" type="text"/></html:label>
       <html:label class="field"><html:span>API Key（留空保留原值）</html:span><html:input id="model-api-key" type="password" autocomplete="off"/></html:label>
-      <html:label class="field"><html:span>模型思考强度</html:span><html:select id="model-reasoning"><html:option value="auto">自动（不附加专有参数）</html:option><html:option value="none">关闭 / 最低</html:option><html:option value="low">低</html:option><html:option value="medium">中</html:option><html:option value="high">高</html:option></html:select></html:label>
-      <html:div class="inline-grid"><html:label class="field"><html:span>最大工具轮数</html:span><html:input id="model-max-steps" type="number" min="2" max="100"/></html:label><html:label class="field"><html:span>超时（秒）</html:span><html:input id="model-timeout" type="number" min="10" max="1800"/></html:label></html:div>
     </html:div>
-    <html:div class="model-actions"><html:button id="model-save" type="button">保存配置</html:button><html:button id="model-test" type="button">测试连接</html:button></html:div>
+    <html:h3 class="prefs-subheading">研究与生成</html:h3>
+    <html:div class="model-grid">
+      <html:label class="field"><html:span>模型思考强度</html:span><html:select id="model-reasoning"><html:option value="auto">服务商默认</html:option><html:option value="none">关闭 / 最低</html:option><html:option value="minimal">极低（minimal）</html:option><html:option value="low">低（low）</html:option><html:option value="medium">中（medium）</html:option><html:option value="high">高（high）</html:option><html:option value="xhigh">超高（xhigh）</html:option><html:option value="max">最高（max）</html:option></html:select></html:label>
+      <html:div class="inline-grid"><html:label class="field"><html:span>最大工具轮数</html:span><html:input id="model-max-steps" type="number" min="2" max="100"/></html:label><html:label class="field"><html:span>超时（秒）</html:span><html:input id="model-timeout" type="number" min="10" max="1800"/></html:label></html:div>
+      <html:label class="field"><html:span>输出预算模式</html:span><html:select id="model-budget-mode"><html:option value="manual">手动预算</html:option><html:option value="auto">自动上限 / 自适应</html:option></html:select></html:label>
+      <html:label class="field"><html:span>手动预算 / 自动模式回退值（tokens，含思考）</html:span><html:input id="model-max-tokens" type="number" min="256" step="1"/></html:label>
+
+    </html:div>
+    <html:div class="vision-card">
+      <html:label class="toggle-line" for="model-vision"><html:span class="toggle-copy"><html:strong>允许模型看图</html:strong><html:small>按需读取 PDF 页面或局部图表</html:small></html:span><html:input id="model-vision" type="checkbox" role="switch" aria-describedby="model-vision-help model-vision-state"/></html:label>
+      <html:p id="model-vision-help" class="lne-note">需模型支持图片输入。开启后，API / MCP 可发送所选页面或区域，可能增加用量；截图随研究记录保存在本机。</html:p>
+      <html:div id="model-vision-state" class="lne-note" role="status"></html:div>
+    </html:div>
+    <html:div class="model-actions"><html:button id="model-save" type="button">保存配置</html:button><html:button id="model-test" type="button">测试连接</html:button><html:button id="model-check-limits" type="button">查询模型上限</html:button></html:div>
     <html:div id="model-state" class="lne-note">读取中…</html:div>
     <html:div class="callout"><html:strong>Markdown 输出模板（可选）</html:strong><html:p class="lne-note">将你导入的 .md 全文交给模型，按其结构回答；未导入时自由回答。不附带默认模板。</html:p><html:div id="template-state">读取中…</html:div><html:div class="model-actions"><html:button id="choose-template" type="button">导入 .md 模板</html:button><html:button id="reset-template" type="button">清除模板选择</html:button></html:div></html:div>
     <html:div id="model-settings-status" class="lne-note" role="status" aria-live="polite"></html:div>
   </html:details>
 
-  <html:details class="zotquery-prefs-group" id="zotquery-group-models" open="">
-    <html:summary>共享向量模型（BGE 等）</html:summary>
+  <html:details class="zotquery-prefs-group" id="zotquery-group-retrieval">
+    <html:summary>检索与索引</html:summary>
+  <html:details class="zotquery-prefs-group" id="zotquery-group-models">
+    <html:summary>语义检索模型（BGE 等）</html:summary>
     <html:p class="lne-note">PDF chunks 与 Note segments 始终调用同一个 ZotQuery 向量模型。验证为同一模型的地址切换可复用现有索引；真正更换模型时需补建向量，旧向量不会被破坏。</html:p>
     <html:div class="lne-row">
       <html:label for="zotquery-pref-embeddingModel">当前模型</html:label>
@@ -160,37 +154,70 @@
     </html:div>
     <html:div id="zotquery-manageModels"></html:div>
   </html:details>
-
-  <html:details class="zotquery-prefs-group" id="zotquery-group-profiles" open="">
-    <html:summary>笔记模板与研究输出</html:summary>
+  <html:details class="zotquery-prefs-group" id="zotquery-group-indexing" open="">
+    <html:summary>PDF 原文索引</html:summary>
+    <html:p class="lne-note">PDF chunks 是精确事实和稳定 locator 的原始证据层。更新会跳过已完成项目；重建只在模型、范围或切分策略发生实质变化时使用。</html:p>
+    <hbox>
+      <button id="zotquery-update-index" label="更新 PDF 索引"/>
+      <button id="zotquery-rebuild-index" label="重建 PDF 索引"/>
+      <button id="zotquery-refresh-stats" label="刷新 PDF 统计"/>
+    </hbox>
+    <html:div class="lne-row">
+      <html:label for="zotquery-pref-indexingMode">内容范围</html:label>
+      <menulist id="zotquery-pref-indexingMode" native="true"><menupopup>
+        <menuitem label="仅题名与摘要" value="abstract"/><menuitem label="完整 PDF（推荐）" value="full"/>
+      </menupopup></menulist>
+      <html:label for="zotquery-pref-indexScope">文库范围</html:label>
+      <menulist id="zotquery-pref-indexScope" native="true"><menupopup>
+        <menuitem label="我的文库" value="user"/><menuitem label="全部文库" value="all"/>
+      </menupopup></menulist>
+      <checkbox id="zotquery-pref-autoIndex" label="自动索引新文献" native="true"/>
+    </html:div>
+    <html:div id="zotquery-autoindex-delay-row" class="lne-row">
+      <html:label for="zotquery-pref-autoIndexDelay">自动索引延迟（秒）</html:label><html:input id="zotquery-pref-autoIndexDelay" class="lne-input" type="number" min="1" max="300" value="10"/>
+    </html:div>
+    <html:div class="lne-row">
+      <checkbox id="zotquery-pref-excludeBooks" label="排除书籍" native="true"/>
+      <html:label for="zotquery-pref-excludeTag">排除标签</html:label><html:input id="zotquery-pref-excludeTag" class="lne-input" type="text" value="zotquery-exclude"/>
+    </html:div>
+  </html:details>
+  <html:details class="zotquery-prefs-group" id="zotquery-group-note-indexing" open="">
+    <html:summary>笔记索引</html:summary>
+    <html:div class="lne-row">
+      <html:label for="lne-note-library-scope">文库范围</html:label>
+      <menulist id="lne-note-library-scope" native="true"><menupopup>
+        <menuitem label="我的文库" value="user"/><menuitem label="全部文库" value="all"/>
+      </menupopup></menulist>
+      <html:label for="lne-note-scope">笔记范围</html:label>
+      <menulist id="lne-note-scope" native="true"><menupopup>
+        <menuitem label="兼容旧版精读笔记" value="reading-notes"/>
+        <menuitem label="全部笔记" value="all"/>
+        <menuitem label="按标题或内容字面量" value="pattern"/>
+      </menupopup></menulist>
+      <html:label for="lne-note-title-pattern">匹配字面量</html:label><html:input id="lne-note-title-pattern" class="lne-input" type="text"/>
+    </html:div>
+    <html:div class="lne-row">
+      <checkbox id="lne-note-autosync" label="自动跟踪笔记变更" native="true"/>
+      <html:label for="lne-note-profile">解析配置</html:label>
+      <menulist id="lne-note-profile" native="true" style="min-width:240px"><menupopup/></menulist>
+    </html:div>
+    <hbox><button id="lne-note-profile-apply" label="保存笔记索引设置"/><button id="lne-sync-notes" label="立即同步笔记与向量"/></hbox>
+    <html:div id="lne-note-profile-status" class="lne-note">读取中…</html:div>
     <html:div class="lne-box">
-      <html:strong>自定义笔记模板</html:strong>
-      <html:details><html:summary>从模板生成并导入 Note Profile JSON</html:summary>
-        <html:p class="lne-note">粘贴 Markdown 模板后生成草稿。请自行核对 selector 与每个 evidenceTags 的角色；系统不会自动把普通段落认作原始证据。</html:p>
+      <html:strong>高级：笔记解析规则</html:strong>
+      <html:details><html:summary>自定义已有笔记的解析方式</html:summary>
+        <html:p class="lne-note">用于解析已有 Zotero 笔记，不控制大模型回答格式。粘贴笔记结构示例可生成 JSON 草稿。请自行核对 selector 与每个 evidenceTags 的角色；系统不会自动把普通段落认作原始证据。</html:p>
         <html:textarea id="lne-note-template-input" rows="4" style="width:100%" placeholder="粘贴 Markdown 笔记模板"></html:textarea>
         <hbox><button id="lne-note-profile-draft" label="生成待审草稿"/><button id="lne-note-profile-validate" label="校验 JSON"/><button id="lne-note-profile-install" label="确认并导入"/></hbox>
         <html:textarea id="lne-note-profile-json" rows="8" style="width:100%" placeholder="Note Profile JSON"></html:textarea>
         <html:div id="lne-note-profile-import-status" class="lne-note"></html:div>
       </html:details>
     </html:div>
-    <html:div class="lne-box">
-      <html:strong>默认研究输出格式</html:strong>
-      <html:div class="lne-row">
-        <menulist id="lne-output-profile" native="true" style="min-width:240px"><menupopup/></menulist>
-        <button id="lne-output-profile-save" label="保存默认格式"/>
-      </html:div>
-      <html:div id="lne-output-profile-status" class="lne-note">读取中…</html:div>
-      <html:details><html:summary>导入 Output Profile JSON</html:summary>
-        <html:p class="lne-note">自定义格式必须保留 Query Contract、研究漏斗、Coverage Gate、候选审计、事实槽、冲突和来源。</html:p>
-        <html:textarea id="lne-output-profile-json" rows="7" style="width:100%" placeholder="Output Profile JSON"></html:textarea>
-        <hbox><button id="lne-output-profile-validate" label="校验 JSON"/><button id="lne-output-profile-install" label="确认并导入"/></hbox>
-        <html:div id="lne-output-profile-import-status" class="lne-note"></html:div>
-      </html:details>
-    </html:div>
+  </html:details>
   </html:details>
 
-  <html:details class="zotquery-prefs-group" id="zotquery-group-agent" open="">
-    <html:summary>Agent 与统一 MCP</html:summary>
+  <html:details class="zotquery-prefs-group" id="zotquery-group-agent">
+    <html:summary>外部模型接入（MCP）</html:summary>
     <html:p class="lne-note">研究工具统一从本机 ZotQuery MCP 端点提供。</html:p>
     <html:div class="lne-box"><html:div class="lne-card-label">MCP endpoint</html:div><html:code id="lne-health-mcp">http://127.0.0.1:23119/zotquery/mcp</html:code><hbox><button id="lne-copy-mcp-token" label="复制 MCP 令牌"/><button id="lne-rotate-mcp-token" label="更换 MCP 令牌"/></hbox><html:div id="lne-mcp-token-status" class="lne-note">连接须使用 Authorization: Bearer 令牌；请勿公开令牌。</html:div></html:div>
   </html:details>
