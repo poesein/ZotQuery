@@ -1,4 +1,4 @@
-/** ZotQuery Research 3.1.17 bootstrap. */
+/** ZotQuery Research 3.1.21 bootstrap. */
 
 var chromeHandle;
 
@@ -73,8 +73,18 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
     try {
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/output-profiles.js`, ctx);
       await ctx.ZotQueryOutputProfilesBootstrap?.startup?.({ rootURI });
+      Services.scriptloader.loadSubScript(`${rootURI}content/scripts/library-read-tools.js`, ctx);
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/research-engine.js`, ctx);
-      await ctx.ZotQueryResearchBootstrap?.startup?.();
+      await ctx.ZotQueryResearchBootstrap?.startup?.({ rootURI });
+      try {
+        Services.scriptloader.loadSubScript(`${rootURI}content/scripts/reading-generation.js`, ctx);
+        await ctx.ZotQueryReadingGenerationBootstrap?.startup?.({ rootURI });
+        Services.scriptloader.loadSubScript(`${rootURI}content/scripts/library-note-tools.js`, ctx);
+        await Zotero.ZotQueryNotes.startup();
+      } catch (e) {
+        (Zotero.ZotQueryStartupErrors ||= {}).notes = e?.message || String(e);
+        Zotero.logError(e);
+      }
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/research-vision.js`, ctx);
       await Zotero.ZotQueryVision.startup();
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/research-history.js`, ctx);
@@ -121,6 +131,7 @@ async function shutdown({ id, version, resourceURI, rootURI }, reason) {
   delete Zotero.ZotQueryModelPreferences;
   try { await Zotero.ZotQueryModelAgent?.shutdown?.(); } catch (e) { Zotero.logError(e); }
   try { await Zotero.ZotQueryHistory?.shutdown?.(); } catch (e) { Zotero.logError(e); }
+  delete Zotero.ZotQueryNotes;
   delete Zotero.ZotQueryVision;
   try { await Zotero.ZotQueryResearch?.shutdown?.(); } catch (e) { Zotero.logError(e); }
   try { await Zotero.ZotQueryLNETools?.shutdown?.(); } catch (e) { Zotero.logError(e); }

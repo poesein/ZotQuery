@@ -1,4 +1,4 @@
-/* ZotQuery Evidence 3.1.17
+/* ZotQuery Evidence 3.1.25
  * Evidence Engine layered on the Search component.
  * Keeps normal search/indexing intact while adding exhaustive lexical
  * passage enumeration, semantic-union retrieval, adaptive context, LNE bridge,
@@ -7,7 +7,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "3.1.17";
+  const VERSION = "3.1.25";
   const DB = "zotquery";
   const RDB = "zotqueryresearch";
   const RFILE = "zotquery-research.sqlite";
@@ -27,8 +27,11 @@
     "/zotquery/verify-note",
     "/zotquery/finalize",
     "/zotquery/mcp",
+    "/zotquery/contracts",
+    "/zotquery/bridge-read",
   ];
   let started = false;
+  let toolContract = null;
   const AUTH_PREF = "zotquery.research.authToken";
   let authToken = null;
 
@@ -166,6 +169,11 @@
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_positions_session ON positions(session_id)`);
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_positions_work ON positions(work_key)`);
     await Zotero.DB.queryAsync(`CREATE INDEX IF NOT EXISTS ${RDB}.idx_positions_review ON positions(session_id, review_status)`);
+    await Zotero.DB.queryAsync(`CREATE TABLE IF NOT EXISTS ${RDB}.visual_session_targets (
+      library_key TEXT NOT NULL, parent_item_key TEXT NOT NULL, attachment_key TEXT NOT NULL,
+      session_id TEXT NOT NULL, position_id TEXT NOT NULL,
+      PRIMARY KEY(library_key,parent_item_key,attachment_key)
+    )`);
     const positionColumns = new Set((await Zotero.DB.queryAsync(`PRAGMA ${RDB}.table_info(positions)`))?.map(r => r.name) || []);
     if (!positionColumns.has("evidence_hint")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.positions ADD COLUMN evidence_hint TEXT`);
     if (!positionColumns.has("evidence_priority")) await Zotero.DB.queryAsync(`ALTER TABLE ${RDB}.positions ADD COLUMN evidence_priority INTEGER NOT NULL DEFAULT 50`);
@@ -718,6 +726,31 @@
     return{sessionId,question,questionMode:mode,factRequest:request,readingPolicy:policy,coverageVersion:"v2",queryPlan:planPublic(plan),coverage:{corpus:{indexedPapers:indexStats.papers,indexedChunks:indexStats.chunks,screenedByLexicalIndex:indexStats.papers,screenComplete:true},lexical:{rawMatches:lex.results.length,complete:!!lex.complete,hardExpression:plan.hardExpression},semantic:{requested:!!includeSemantic,required:!!requireSemantic,matches:sem.results.length,threshold:minSimilarity,completeAboveThreshold:!!sem.completeAboveThreshold},lne:{requested:!!includeLNE,required:!!requireLNE,matches:notePositions.length,notesReturned:Number(lne?.truncation?.returned??lne?.notes?.length??0),truncated:!!lne?.truncation?.truncated,complete:lneComplete},rawCandidatePositions:candidates.length,reviewUnits,navigationPositions:candidates.length-reviewUnits,candidatePapers:new Set(candidates.map(x=>x.workKey)).size},errors,next:"Page evidence_positions(scope=coverage) to nextOffset=null; open and review every review unit. Semantic/LNE navigation hits do not expand the gate unless explicitly verified/promoted. EXACT questions also require direct PDF FactRecords."};
   }
 
+  async function startVisualPaperSession({library='user',parentItemKey,attachmentKey,question}={}) {
+    const scope=String(library||''),key=String(parentItemKey||'');
+    if(!/^(user|group:[1-9][0-9]*)$/.test(scope)||!/^[A-Z0-9]{8}$/.test(key))throw Error('必须提供有效的 library 和 parentItemKey');
+    if(attachmentKey!=null&&!/^[A-Z0-9]{8}$/.test(String(attachmentKey)))throw Error('attachmentKey 必须是八位 Zotero 条目 key');
+    if(question!=null&&(typeof question!=='string'||question.length>1000))throw Error('question 过长');
+    const libraryID=scope==='user'?Zotero.Libraries.userLibraryID:Zotero.Groups.getLibraryIDFromGroupID(Number(scope.slice(6)));
+    if(libraryID==null)throw Error('文献库不存在');
+    const itemID=Zotero.Items.getIDFromLibraryAndKey(libraryID,key),parent=itemID?await Zotero.Items.getAsync(itemID):null;
+    if(!parent?.isRegularItem?.()||parent.deleted||parent.libraryID!==libraryID)throw Error('指定的父文献条目不存在');
+    const attachments=(await Zotero.Items.getAsync(parent.getAttachments?.()||[])).filter(item=>item?.isPDFAttachment?.()&&!item.deleted);
+    const selected=attachmentKey?attachments.find(item=>item.key===attachmentKey):attachments.length===1?attachments[0]:null;
+    if(!selected)throw Error(`请指定该文献下的 PDF attachmentKey；候选：${attachments.map(item=>item.key).join(', ')||'无'}`);
+    if(!await selected.getFilePathAsync())throw Error('PDF 未保存在本机');
+    await ensureResearchSchema();
+    const old=(await Zotero.DB.queryAsync(`SELECT session_id,position_id FROM ${RDB}.visual_session_targets WHERE library_key=? AND parent_item_key=? AND attachment_key=?`,[scope,key,selected.key]))[0];
+    if(old)return {sessionId:old.session_id,positionId:old.position_id,library:scope,parentItemKey:key,attachmentKey:selected.key,title:parent.getField('title'),reused:true,queryIndependent:true,visualOnly:true,synthesisAllowed:false};
+    const sessionId=rid(),positionId=`vp-${Services.uuid.generateUUID().toString().replace(/[{}]/g,'')}`,ts=now(),title=parent.getField('title')||'';
+    await Zotero.DB.executeTransaction(async()=>{
+      await Zotero.DB.queryAsync(`INSERT INTO ${RDB}.sessions (session_id,question,created_at,updated_at,status,query_json,question_mode,reading_policy,coverage_version) VALUES(?,?,?,?,?,?,?,?,?)`,[sessionId,String(question||title||key),ts,ts,'reviewing',JSON.stringify({visualOnly:true,library:scope,parentItemKey:key,attachmentKey:selected.key}), 'STANDARD','VISUAL_ONLY','v2']);
+      await Zotero.DB.queryAsync(`INSERT INTO ${RDB}.positions (position_id,session_id,source,work_key,library_key,item_key,title,match_kind,preview,review_status,coverage_required,position_role,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[positionId,sessionId,'pdf',`${scope}:${key}`,scope,key,title,'item-key','PDF image anchor for exact Zotero item','unreviewed',0,'visual-source-anchor',ts,ts]);
+      await Zotero.DB.queryAsync(`INSERT INTO ${RDB}.visual_session_targets(library_key,parent_item_key,attachment_key,session_id,position_id) VALUES(?,?,?,?,?)`,[scope,key,selected.key,sessionId,positionId]);
+    });
+    return {sessionId,positionId,library:scope,parentItemKey:key,attachmentKey:selected.key,title,reused:false,queryIndependent:true,visualOnly:true,synthesisAllowed:false,next:'Use zotquery_preview_pdf_page with sessionId, positionId and a 1-based pageNumber. A visual-only session does not pass the text evidence coverage gate.'};
+  }
+
   async function documentCoverage(sessionId) {
     const allWorkRows=await Zotero.DB.queryAsync(`SELECT DISTINCT work_key FROM ${RDB}.positions WHERE session_id=? AND coverage_required=1`,[sessionId]);
     const works=await Zotero.DB.queryAsync(`SELECT DISTINCT work_key,library_key,item_key FROM ${RDB}.positions WHERE session_id=? AND source='pdf' AND coverage_required=1`,[sessionId]);
@@ -893,6 +926,113 @@
       audit:{generatedAt:now(),source:"persisted research session",noteEvidenceIsNavigation:true,directFactsRequireOriginalPdf:true}};
   }
 
+  async function bridgeFacts(sessionId,{offset=0,limit=25}={}) {
+    await sessionLedger(sessionId);
+    const pageOffset=num(offset,0,0,1e8),pageLimit=num(limit,25,1,50);
+    const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.fact_records WHERE session_id=?`,[sessionId])||0);
+    const rows=await Zotero.DB.queryAsync(`SELECT fact_id,position_id,slot,entity,value_text,value_type,unit,numbering,evidence_status,source_quote,locator_json,notes,assessment_json FROM ${RDB}.fact_records WHERE session_id=? ORDER BY slot,created_at,fact_id LIMIT ? OFFSET ?`,[sessionId,pageLimit,pageOffset]);
+    const results=await Promise.all((rows||[]).map(async r=>{
+      const locator=jsonObject(r.locator_json,{});
+      return{factId:r.fact_id,positionId:r.position_id,slot:r.slot,entity:r.entity,value:r.value_text,valueType:r.value_type,unit:r.unit,numbering:r.numbering,evidenceStatus:r.evidence_status,sourceQuote:r.source_quote,notes:r.notes,assessment:factAssessment(r),locator,links:await sourceLinks(locator)};
+    }));
+    return{sessionId,total,offset:pageOffset,limit:pageLimit,nextOffset:pageOffset+results.length<total?pageOffset+results.length:null,results};
+  }
+
+  async function bridgeAnswers(sessionId,{offset=0,limit=20}={}) {
+    await sessionLedger(sessionId);
+    const pageOffset=num(offset,0,0,1e8),pageLimit=num(limit,20,1,50);
+    const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.answer_runs WHERE session_id=?`,[sessionId])||0);
+    const rows=await Zotero.DB.queryAsync(`SELECT run_id,created_at,updated_at,status,provider,model,error_code,LENGTH(markdown) answer_chars FROM ${RDB}.answer_runs WHERE session_id=? ORDER BY created_at DESC,run_id DESC LIMIT ? OFFSET ?`,[sessionId,pageLimit,pageOffset]);
+    const results=(rows||[]).map(r=>({runId:r.run_id,createdAt:r.created_at,updatedAt:r.updated_at,status:r.status,provider:r.provider,model:r.model,errorCode:r.error_code||null,answerChars:Number(r.answer_chars||0)}));
+    return{sessionId,total,offset:pageOffset,limit:pageLimit,nextOffset:pageOffset+results.length<total?pageOffset+results.length:null,results};
+  }
+
+  async function bridgeAnswerChunk(sessionId,{runId,offset=0,limit=24000}={}) {
+    await sessionLedger(sessionId);
+    if(typeof runId!=="string"||!runId||runId.length>120)throw new Error("A valid runId is required");
+    const pageOffset=num(offset,0,0,1e8),pageLimit=num(limit,24000,1,100000);
+    const rows=await Zotero.DB.queryAsync(`SELECT status,LENGTH(markdown) total_chars,SUBSTR(markdown,?,?) answer_text FROM ${RDB}.answer_runs WHERE session_id=? AND run_id=?`,[pageOffset+1,pageLimit,sessionId,runId]);
+    const row=rows?.[0];if(!row)throw new Error("Answer does not belong to this research session");
+    const total=Number(row.total_chars||0),text=String(row.answer_text||"");
+    return{sessionId,runId,status:row.status,totalChars:total,offset:pageOffset,nextOffset:pageOffset+text.length<total?pageOffset+text.length:null,text};
+  }
+
+  async function bridgeDocuments(sessionId,{offset=0,limit=20}={}) {
+    await sessionLedger(sessionId);
+    const pageOffset=num(offset,0,0,1e8),pageLimit=num(limit,20,1,50);
+    const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(DISTINCT work_key) FROM ${RDB}.positions WHERE session_id=? AND source='pdf'`,[sessionId])||0);
+    const rows=await Zotero.DB.queryAsync(`SELECT work_key,MAX(title) title,MAX(library_key) library_key,MAX(item_key) item_key,COUNT(*) evidence_positions FROM ${RDB}.positions WHERE session_id=? AND source='pdf' GROUP BY work_key ORDER BY title,work_key LIMIT ? OFFSET ?`,[sessionId,pageLimit,pageOffset]);
+    const results=(rows||[]).map(r=>({workKey:r.work_key,title:r.title,libraryKey:r.library_key,itemKey:r.item_key,evidencePositions:Number(r.evidence_positions||0)}));
+    return{sessionId,total,offset:pageOffset,limit:pageLimit,nextOffset:pageOffset+results.length<total?pageOffset+results.length:null,results};
+  }
+
+  async function bridgeDocumentSource(sessionId,workKey) {
+    await sessionLedger(sessionId);
+    if(typeof workKey!=="string"||!workKey||workKey.length>160)throw new Error("A valid workKey is required");
+    const p=(await Zotero.DB.queryAsync(`SELECT library_key,item_key,title FROM ${RDB}.positions WHERE session_id=? AND work_key=? AND source='pdf' LIMIT 1`,[sessionId,workKey]))?.[0];
+    if(!p)throw new Error("PDF document does not belong to this research session");
+    const pk=await Zotero.DB.valueQueryAsync(`SELECT item_pk FROM ${DB}.items WHERE library_key=? AND item_key=?`,[p.library_key,p.item_key]);
+    if(pk==null)throw new Error("Indexed PDF is unavailable");
+    return{p,pk:Number(pk),model:activeModel()};
+  }
+
+  async function bridgeDocumentChunks(sessionId,{workKey,offset=0,limit=10}={}) {
+    const {p,pk,model}=await bridgeDocumentSource(sessionId,workKey);
+    const pageOffset=num(offset,0,0,1e8),pageLimit=num(limit,10,1,20);
+    const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${DB}.chunks WHERE item_pk=? AND model_id=?`,[pk,model])||0);
+    const rows=await Zotero.DB.queryAsync(`SELECT chunk_index,chunk_text,text_source,page_number,paragraph_index FROM ${DB}.chunks WHERE item_pk=? AND model_id=? ORDER BY chunk_index LIMIT ? OFFSET ?`,[pk,model,pageLimit,pageOffset]);
+    const chunks=(rows||[]).map(r=>({chunkIndex:Number(r.chunk_index),pageNumber:r.page_number==null?null:Number(r.page_number),paragraphIndex:r.paragraph_index==null?null:Number(r.paragraph_index),textSource:r.text_source,text:r.chunk_text||""}));
+    return{sessionId,workKey,title:p.title,modelId:model,total,offset:pageOffset,limit:pageLimit,nextOffset:pageOffset+chunks.length<total?pageOffset+chunks.length:null,chunks,readOnly:true};
+  }
+
+  async function bridgeSearchDocument(sessionId,{workKey,query,offset=0,limit=20}={}) {
+    const {p,pk,model}=await bridgeDocumentSource(sessionId,workKey);
+    const term=String(query||"").trim();if(!term||term.length>200)throw new Error("A search query of at most 200 characters is required");
+    const pageOffset=num(offset,0,0,1e8),pageLimit=num(limit,20,1,50);
+    const where=`item_pk=? AND model_id=? AND instr(lower(chunk_text),lower(?))>0`,args=[pk,model,term];
+    const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${DB}.chunks WHERE ${where}`,args)||0);
+    const rows=await Zotero.DB.queryAsync(`SELECT chunk_index,chunk_text,page_number,paragraph_index FROM ${DB}.chunks WHERE ${where} ORDER BY chunk_index LIMIT ? OFFSET ?`,[...args,pageLimit,pageOffset]);
+    const results=(rows||[]).map(r=>{const body=String(r.chunk_text||""),at=body.toLowerCase().indexOf(term.toLowerCase()),start=Math.max(0,at-240);return{chunkIndex:Number(r.chunk_index),pageNumber:r.page_number==null?null:Number(r.page_number),paragraphIndex:r.paragraph_index==null?null:Number(r.paragraph_index),preview:body.slice(start,start+700)};});
+    return{sessionId,workKey,title:p.title,query:term,total,offset:pageOffset,limit:pageLimit,nextOffset:pageOffset+results.length<total?pageOffset+results.length:null,results,navigationOnly:true};
+  }
+
+  async function bridgeRead(args={}) {
+    const action=String(args.action||"");
+    const sessionId=String(args.sessionId||"");
+    if(action==="sessions"){
+      if(!Zotero.ZotQueryHistory?.list)throw new Error("Research history is unavailable");
+      return Zotero.ZotQueryHistory.list({search:String(args.search||"").slice(0,200),offset:num(args.offset,0,0,1e8),limit:num(args.limit,20,1,50)});
+    }
+    if(!sessionId||sessionId.length>120)throw new Error("A valid sessionId is required");
+    if(action==="ledger")return sessionLedger(sessionId);
+    if(action==="facts")return bridgeFacts(sessionId,args);
+    if(action==="answers")return bridgeAnswers(sessionId,args);
+    if(action==="answer_chunk")return bridgeAnswerChunk(sessionId,args);
+    if(action==="documents")return bridgeDocuments(sessionId,args);
+    if(action==="document_chunks")return bridgeDocumentChunks(sessionId,args);
+    if(action==="search_document")return bridgeSearchDocument(sessionId,args);
+    if(action==="positions")return positions(sessionId,{offset:num(args.offset,0,0,1e8),limit:num(args.limit,25,1,50),scope:["coverage","navigation","all"].includes(args.scope)?args.scope:"coverage",status:typeof args.status==="string"&&args.status.length<40?args.status:null,compact:false,includeLinks:true,markListed:false});
+    if(action==="context"){
+      const positionId=String(args.positionId||"");
+      await validateSessionScope(sessionId,{positionId});
+      return positionContext(positionId,{level:num(args.level,1,0,3),recordRead:false});
+    }
+    if(action==="images")return Zotero.ZotQueryVision?.list?.(sessionId,{offset:num(args.offset,0,0,1e8),limit:num(args.limit,12,1,30)})||{sessionId,total:0,offset:0,nextOffset:null,results:[]};
+    if(action==="saved_image"){
+      if(Zotero.Prefs.get("zotquery.modelAgent.visionEnabled",true)!==true)throw new Error("PDF image sharing is disabled in ZotQuery settings");
+      const visualId=String(args.visualId||"");
+      if(!visualId||visualId.length>120)throw new Error("A valid visualId is required");
+      if(!Zotero.ZotQueryVision?.readSaved)throw new Error("Saved image reader is unavailable");
+      return Zotero.ZotQueryVision.readSaved(sessionId,visualId);
+    }
+    if(action==="page_image"){
+      if(Zotero.Prefs.get("zotquery.modelAgent.visionEnabled",true)!==true)throw new Error("PDF image sharing is disabled in ZotQuery settings");
+      if(!Zotero.ZotQueryVision?.previewPage)throw new Error("Live PDF page preview is unavailable");
+      return Zotero.ZotQueryVision.previewPage({sessionId,positionId:String(args.positionId||""),pageNumber:args.pageNumber,attachmentKey:args.attachmentKey,crop:args.crop});
+    }
+    throw new Error("Unknown read-only bridge action");
+  }
+
   async function nextActions(sessionId, ledger=null) {
     ledger=ledger||await sessionLedger(sessionId);
     const pending=await Zotero.DB.queryAsync(`SELECT position_id,review_status,context_read_at FROM ${RDB}.positions WHERE session_id=? AND coverage_required=1 AND (context_read_at IS NULL OR review_status IN ('unreviewed','needs_context','unresolved','conflicting')) ORDER BY evidence_priority,work_key,position_id LIMIT 12`,[sessionId]);
@@ -929,9 +1069,9 @@
     }
   }
 
-  async function positions(sessionId,{offset=0,limit=25,status=null,scope="coverage",compact=false,includeLinks=false}={}) {
+  async function positions(sessionId,{offset=0,limit=25,status=null,scope="coverage",compact=false,includeLinks=false,markListed=true}={}) {
     await ensureResearchSchema();const args=[sessionId];let w="session_id=?";const sc=String(scope||"coverage").toLowerCase();if(sc==="coverage")w+=" AND coverage_required=1";else if(sc==="navigation")w+=" AND coverage_required=0";if(status){w+=" AND review_status=?";args.push(status);}const total=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.positions WHERE ${w}`,args)||0),pageLimit=num(limit,100,1,1000),pageOffset=num(offset,0,0,1e8);
-    const rows=await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE ${w} ORDER BY coverage_required DESC,should_match_count DESC,evidence_priority ASC,source,work_key,COALESCE(chunk_index,line_start,0) LIMIT ? OFFSET ?`,[...args,pageLimit,pageOffset]);if(rows?.length){const ids=rows.map(r=>r.position_id);await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET listed_at=COALESCE(listed_at,?),updated_at=? WHERE position_id IN (${ids.map(()=>"?").join(",")})`,[now(),now(),...ids]);}
+    const rows=await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE ${w} ORDER BY coverage_required DESC,should_match_count DESC,evidence_priority ASC,source,work_key,COALESCE(chunk_index,line_start,0) LIMIT ? OFFSET ?`,[...args,pageLimit,pageOffset]);if(markListed&&rows?.length){const ids=rows.map(r=>r.position_id);await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET listed_at=COALESCE(listed_at,?),updated_at=? WHERE position_id IN (${ids.map(()=>"?").join(",")})`,[now(),now(),...ids]);}
     const listed=Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${RDB}.positions WHERE ${w} AND listed_at IS NOT NULL`,args)||0),nextOffset=pageOffset+(rows?.length||0)<total?pageOffset+(rows?.length||0):null;
     const results = [];
     const linkCache = new Map();
@@ -953,7 +1093,7 @@
     return{sessionId,scope:sc,total,offset:pageOffset,limit:pageLimit,nextOffset,pageComplete:nextOffset==null,listingCoverage:{listed,unlisted:Math.max(0,total-listed),allListed:total>0&&listed===total},results};
   }
 
-  async function positionContext(positionId,{level=1}={}) {
+  async function positionContext(positionId,{level=1,recordRead=true}={}) {
     await ensureResearchSchema();const p=(await Zotero.DB.queryAsync(`SELECT * FROM ${RDB}.positions WHERE position_id=?`,[positionId]))?.[0];if(!p)throw new Error("Unknown position");let registeredHint=null;try{registeredHint=p.evidence_hint?JSON.parse(p.evidence_hint):null;}catch{}
     level=num(level,1,0,3);
     const markRead=()=>Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET context_read_at=COALESCE(context_read_at,?),context_level=MAX(context_level,?),updated_at=? WHERE position_id=?`,[now(),level,now(),positionId]);
@@ -965,18 +1105,18 @@
         const target=fresh.chunks.find(c=>c.target),oldTarget=saved?.chunks?.find(c=>c.target);
         if(!target?.text) { if(!saved)throw new Error("Target PDF chunk is unavailable; not marked as read"); }
         else if(oldTarget&&oldTarget.text!==target.text)throw new Error("Indexed source changed since the saved reading. Old evidence is preserved; use a new session to read the revised source.");
-        else { ctx={...fresh,capturedAt:now()}; await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET source_context_json=? WHERE position_id=?`,[JSON.stringify(ctx),positionId]); }
+        else { ctx={...fresh,capturedAt:now()}; if(recordRead)await Zotero.DB.queryAsync(`UPDATE ${RDB}.positions SET source_context_json=? WHERE position_id=?`,[JSON.stringify(ctx),positionId]); }
       }
       level=Math.min(level,ctx.before>=12?3:ctx.before>=5?2:ctx.before>=2?1:0);
       const links=await sourceLinks({libraryKey:p.library_key,itemKey:p.item_key,pageNumber:p.page_number});
-      await markRead();
-      return{positionId,source:"pdf",level,...ctx,links,registeredEvidenceHint:registeredHint,snapshot:true,evidenceRule:"Original reading snapshot, not necessarily the current reindexed text. Evidence hints are ranking aids only. Distinguish full support from partial evidence; use the source meaning, not a literal-value match alone."};
+      if(recordRead)await markRead();
+      return{positionId,source:"pdf",level,...ctx,links,registeredEvidenceHint:registeredHint,snapshot:recordRead||ctx===saved,evidenceRule:"Original reading text; a preview does not mark this position as read or verified. Evidence hints are ranking aids only. Distinguish full support from partial evidence; use the source meaning, not a literal-value match alone."};
     }
     if(p.source==="note"){
       if(!Zotero.ZotQueryLNE?.api?.trace)throw new Error("Native LNE trace API is unavailable");
       const trace=await Zotero.ZotQueryLNE.api.trace(p.note_key,{libraryKey:p.library_key,from:p.line_start??1,around:level<=0?1:level===1?3:level===2?8:20});
       const links=await sourceLinks({libraryKey:p.library_key,itemKey:p.item_key,noteKey:p.note_key,lineStart:p.line_start,lineEnd:p.line_end});
-      await markRead();
+      if(recordRead)await markRead();
       return{positionId,source:"note",level,trace,links,registeredEvidenceHint:registeredHint,evidenceRule:"LNE notes are navigation/synthesis aids, not primary proof. Use evidence_verify_note to locate same-parent PDF evidence before recording a DIRECT fact."};
     }
     throw new Error("Unsupported position source");
@@ -1208,6 +1348,10 @@
   const Resolve=Endpoint(["POST"], req=>guard(req,()=>resolveFactConflict(req.data?.sessionId,req.data||{})));
   const VerifyNote=Endpoint(["POST"], req=>guard(req,()=>verifyNoteSource(req.data?.positionId,req.data||{})));
   const Finalize=Endpoint(["POST"], req=>guard(req,()=>finalize(req.data?.sessionId)));
+  // A narrow local transport for the private ChatGPT bridge. No write-capable
+  // research method is dispatched here, even if the caller knows its name.
+  const BridgeRead=Endpoint(["POST"], req=>guard(req,()=>bridgeRead(req.data||{})));
+  const Contracts=Endpoint(["GET"], req=>guard(req,()=>({version:toolContract?.version||null,identity:toolContract?.identity||null,effects:toolContract?.effects||null,tools:toolContract?.tools||{},nativeTools:qstr(req).get('includeSchemas')==='1'?allTools():undefined})));
 
   // ---------- Unified MCP ----------
   const assessmentSchema={type:"object",properties:{relation:{type:"string",enum:["full","partial","context","contradicts"]},sourceMeaning:{type:"string",description:"What the source actually establishes, with its entity, scope and conditions. Do not paraphrase a mapping as direct observation."},rationale:{type:"string",description:"Why this evidence does or does not answer the ENTIRE declared slot; literal occurrence alone is insufficient."},limitations:{type:"string"}},required:["relation","sourceMeaning","rationale"]};
@@ -1222,6 +1366,7 @@
     {name:"research_health",description:"Check ZotQuery Search, Evidence, Core and Survey stores, and query embedding readiness.",inputSchema:{type:"object",properties:{}}},
     {name:"evidence_plan",description:"Non-mutating Query Contract v2 preflight. Supports quoted/+ MUST terms, - exclusions, {a|b} alias groups, structured must/should/alias groups, protected identifiers, cardinality estimates and surface-preservation audit. Use this before broad sweeps.",inputSchema:{type:"object",properties:planProps,required:["question"]}},
     {name:"evidence_research_start",description:"Preferred unified entry point. Starts the PDF Coverage Gate and a persistent LNE Survey together, then automatically promotes the first page of core paper-side note candidates into same-parent PDF verification. Preserves Unicode identifier surfaces and never invents ASCII aliases.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:factRequestSchema,readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5},surveyPreset:{type:"string",enum:["quick","balanced","exhaustive","audit"]},surveyAnchors:{},surveyAxes:{},surveyMaxQueries:{type:"integer",minimum:1,maximum:20},surveyMaxPerQuery:{type:"integer",minimum:1,maximum:500},surveyHits:{type:"integer",minimum:1,maximum:8},surveyLexicalOnly:{type:"boolean"},promotionLimit:{type:"integer",minimum:1,maximum:50},verificationQuery:{type:"string"},verificationAliases:{type:"array",items:{type:"string"}}},required:["question"]}},
+    {name:"evidence_visual_session_start",description:"Start or reuse a PDF image research session for one exact Zotero parent item key. Independent of title search and index coverage. Returns a sessionId and positionId for page preview. Visual-only sessions never satisfy the text evidence synthesis gate.",inputSchema:{type:"object",properties:{library:{type:"string",pattern:"^(user|group:[1-9][0-9]*)$"},parentItemKey:{type:"string",pattern:"^[A-Z0-9]{8}$"},attachmentKey:{type:"string",pattern:"^[A-Z0-9]{8}$"},question:{type:"string",maxLength:1000}},required:["library","parentItemKey"],additionalProperties:false}},
     {name:"evidence_sweep",description:"Start Coverage Gate v2. Exhaustiveness is defined over the hard Query Contract (MUST groups AND; aliases within a group OR; exclusions NOT). QUERY_EXHAUSTIVE clusters adjacent duplicate lexical hits into review units; semantic and LNE hits are navigation-only unless explicitly required/verified.",inputSchema:{type:"object",properties:{...planProps,includeSemantic:{type:"boolean"},requireSemantic:{type:"boolean"},semanticLimit:{type:"integer",minimum:1,maximum:5000},minSimilarity:{type:"number",minimum:0,maximum:1},libraryKey:{type:"string"},includeLNE:{type:"boolean"},requireLNE:{type:"boolean"},questionMode:{type:"string",enum:["AUTO","STANDARD","EXACT"]},factRequest:factRequestSchema,readingPolicy:{type:"string",enum:["QUERY_EXHAUSTIVE","ALL_POSITIONS","FULL_TEXT_CANDIDATES"]},allowLargeSweep:{type:"boolean"},clusterGap:{type:"integer",minimum:0,maximum:5}},required:["question"]}},
     {name:"evidence_positions",description:"Page evidence positions. Use compact=true for model context; nextOffset must be followed to null. scope=coverage (default) returns gate-required clusters; scope=navigation returns supplemental hits.",inputSchema:{type:"object",properties:{sessionId:{type:"string"},offset:{type:"integer"},limit:{type:"integer",minimum:1,maximum:1000},compact:{type:"boolean"},status:{type:"string"},scope:{type:"string",enum:["coverage","navigation","all"]}},required:["sessionId"]}},
     {name:"evidence_context",description:"Read sufficient surrounding context for one position. level 0=matched chunk, 1=±2 chunks/default, 2=±5, 3=±12; note positions use LNE trace with analogous expansion.",inputSchema:{type:"object",properties:{positionId:{type:"string"},level:{type:"integer",minimum:0,maximum:3}},required:["positionId"]}},
@@ -1252,16 +1397,26 @@
     if(name==="zotquery_health")return"research_health";
     if(!String(name||"").startsWith("zotquery_"))throw new Error("Use a listed zotquery_* tool name");
     const suffix=String(name).slice("zotquery_".length);
-    return suffix.startsWith("evidence_")||suffix.startsWith("research_")||suffix.startsWith("note_profile_")||suffix.startsWith("output_profile_")?suffix:`lne_${suffix}`;
+    return ['get_selected_items','create_child_note','upsert_child_note','depth_qc_preview','set_item_tag','add_item_tag','reading_batch_status','reading_generation_profile','reading_batch_record_failure'].includes(suffix)||suffix.startsWith("library_")||suffix.startsWith("evidence_")||suffix.startsWith("research_")||suffix.startsWith("note_profile_")||suffix.startsWith("output_profile_")?suffix:`lne_${suffix}`;
   };
-  const allTools=()=>[...tools,...lneTools(),...(Zotero.ZotQueryVision?.toolDefinitions?.()||[])].map(tool=>({...tool,name:publicToolName(tool.name)}));
+  const allTools=()=>[...tools,...lneTools(),...(Zotero.ZotQueryLibrary?.toolDefinitions?.()||[]),...(Zotero.ZotQueryVision?.toolDefinitions?.()||[]),...(Zotero.ZotQueryNotes?.toolDefinitions?.()||[])].map(tool=>{
+    const name=publicToolName(tool.name),policy=toolContract?.tools?.[name];
+    if(toolContract&&!policy)throw new Error(`Tool contract missing: ${name}`);
+    return {...tool,name,...(policy?{annotations:{readOnlyHint:policy.effect==='read',destructiveHint:!!policy.highImpact,openWorldHint:false},_meta:{'zotquery/domain':policy.domain,'zotquery/effect':policy.effect,'zotquery/contractVersion':toolContract.version}}:{})};
+  });
   const mcpResult=(id,obj,isError=false)=>{const images=Array.isArray(obj?.images)?obj.images:null,data=images?{...obj,images:undefined}:obj;return [200,"application/json",JSON.stringify({jsonrpc:"2.0",id:id??null,result:{content:[{type:"text",text:JSON.stringify(data,null,2)},...(images?images.filter(x=>x.mimeType==='image/png'&&typeof x.data==='string').map(x=>({type:'image',mimeType:x.mimeType,data:x.data})):[])],...(isError?{isError:true}:{})}})];};
   async function callTool(name,a){
     name=internalToolName(name);
+    if(name.startsWith('library_'))return Zotero.ZotQueryLibrary.callTool(name,a||{});
+    if(['get_selected_items','create_child_note','upsert_child_note','depth_qc_preview','set_item_tag','add_item_tag','reading_batch_status','reading_generation_profile','reading_batch_record_failure'].includes(name)){
+      if(!Zotero.ZotQueryNotes?.callTool)throw Error('ZotQuery Zotero 笔记工具尚未启动');
+      return Zotero.ZotQueryNotes.callTool(name,a);
+    }
     if(['evidence_page_image','evidence_visual_observe','evidence_visual_list'].includes(name))return Zotero.ZotQueryVision.callTool(name,a);
     if(name==="evidence_assess_fact")return assessFact(a);
     if(name==="evidence_retry_orchestration")return retryOrchestration(a.sessionId,a);
     if(name==="evidence_next_actions")return nextActions(a.sessionId);
+    if(name==="evidence_visual_session_start")return startVisualPaperSession(a);
     if(name==="research_result")return researchResult(a.sessionId,a);
     if(name==="research_render")return Zotero.ZotQueryOutputProfiles.render(await researchResult(a.sessionId,a),a.profileId||Zotero.Prefs.get("zotquery.outputProfile",true)||"standard");
     if(name==="note_profile_list")return {activeProfile:Zotero.ZotQueryNoteProfiles.active(),profiles:Zotero.ZotQueryNoteProfiles.list()};
@@ -1282,10 +1437,10 @@
   const MCP=Endpoint(["POST"], async req=>{if(!authorized(req))return[401,"application/json",JSON.stringify({jsonrpc:"2.0",id:null,error:{code:-32001,message:"Unauthorized: local Bearer token required"}})];const b=req.data||{},id=b.id;if(b.method==="initialize")return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,result:{protocolVersion:b.params?.protocolVersion||"2025-06-18",capabilities:{tools:{listChanged:false}},serverInfo:{name:"ZotQuery MCP",version:VERSION}}})];if(b.method==="ping")return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,result:{}})];if(b.method==="tools/list")return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,result:{tools:allTools()}})];if(b.method==="tools/call"){try{return mcpResult(id,await callTool(b.params?.name,b.params?.arguments||{}));}catch(e){return mcpResult(id,{error:e.message},true);}}return[200,"application/json",JSON.stringify({jsonrpc:"2.0",id,error:{code:-32601,message:"Method not found"}})];});
 
   const classes={
-    "/zotquery/health":Health,"/zotquery/lexical":Lexical,"/zotquery/plan":Plan,"/zotquery/context":Context,"/zotquery/sweep":Sweep,"/zotquery/session":Session,"/zotquery/positions":Positions,"/zotquery/document":Document,"/zotquery/review":Review,"/zotquery/fact":Fact,"/zotquery/resolve":Resolve,"/zotquery/verify-note":VerifyNote,"/zotquery/finalize":Finalize,"/zotquery/mcp":MCP
+    "/zotquery/health":Health,"/zotquery/lexical":Lexical,"/zotquery/plan":Plan,"/zotquery/context":Context,"/zotquery/sweep":Sweep,"/zotquery/session":Session,"/zotquery/positions":Positions,"/zotquery/document":Document,"/zotquery/review":Review,"/zotquery/fact":Fact,"/zotquery/resolve":Resolve,"/zotquery/verify-note":VerifyNote,"/zotquery/finalize":Finalize,"/zotquery/mcp":MCP,"/zotquery/contracts":Contracts,"/zotquery/bridge-read":BridgeRead
   };
 
-  async function startup(){if(started)return;ensureAuthToken();await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,assessFact,nextActions,validateSessionScope,toolDefinitions:allTools,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
+  async function startup({rootURI}={}){if(started)return;ensureAuthToken();if(rootURI){const raw=await Zotero.File.getResourceAsync(`${rootURI}content/profiles/tools/tool-contracts.json`);toolContract=JSON.parse(raw);if(toolContract.version!==1||!toolContract.tools||toolContract.identity?.title!=='navigation-only')throw new Error('Invalid ZotQuery tool contract');}await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startVisualPaperSession,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,bridgeRead,assessFact,nextActions,validateSessionScope,toolDefinitions:allTools,toolContract:()=>toolContract,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
   async function shutdown(){for(const p of ENDPOINTS)try{delete Zotero.Server.Endpoints[p];}catch{}try{const l=await Zotero.DB.queryAsync("PRAGMA database_list");if(l?.some(r=>r.name===RDB))await Zotero.DB.queryAsync(`DETACH DATABASE ${RDB}`);}catch{}delete Zotero.ZotQueryResearch;started=false;log("stopped");}
 
   _globalThis.ZotQueryResearchBootstrap={startup,shutdown,_defaultFactRequest:defaultFactRequest};

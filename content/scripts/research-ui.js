@@ -5,7 +5,7 @@
 "use strict";
 
 ((global) => {
-  const VERSION = "3.1.17";
+  const VERSION = "3.1.25";
   let dashboardWindow = null;
   let observer = null;
   let refreshTimer = null;

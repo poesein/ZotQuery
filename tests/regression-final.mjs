@@ -64,7 +64,7 @@ assert.deepEqual(Array.from(factRequest.slots, s => [s.id, s.type]), [["sequence
 // Run the actual planner with only its database cardinality probe stubbed.
 const plannerSource = researchSource
   .replace("await ensureFTS(false); question=", "question=")
-  .replace(/async function expressionStats\(expression,[\s\S]*?\n  }\n  function genericEvidenceHint/, `async function expressionStats(expression) {
+  .replace(/async function expressionStats\(expression,[\s\S]*?\r?\n  }\r?\n  function genericEvidenceHint/, `async function expressionStats(expression) {
     const both = expression.includes('x42α') && expression.includes('mβ7');
     const extraFamilyTerm = expression.includes('"x42"');
     return { matches: both ? (extraFamilyTerm ? 10 : 63) : 1696, papers: both ? (extraFamilyTerm ? 4 : 18) : 264 };
@@ -196,6 +196,10 @@ const draft = noteProfiles.draftFromTemplate("## Results\n【My evidence label�
 assert.equal(draft.evidenceTags["My evidence label"].role, "UNKNOWN", "profile draft must not invent evidence status");
 assert.equal(noteProfiles.validate(draft).valid, false, "draft must require an explicit selector before installation");
 assert.equal(outputProfiles.validate({id:"unsafe",name:"Unsafe",sections:["summary"]}).valid, false, "custom output cannot remove mandatory audit sections");
+for (const listed of outputProfiles.list()) {
+  assert.equal(outputProfiles.validate(listed).valid, true, `listed ${listed.id} must round-trip through validation`);
+  assert.equal(outputProfiles.render({ question:"Profile smoke", status:"blocked", coverageGate:{synthesisAllowed:false}, facts:[] }, listed.id).profileId, listed.id);
+}
 const blockedOutput = outputProfiles.render({ question:"Exact sequence?", status:"blocked", coverageGate:{synthesisAllowed:false,blockers:["Missing original PDF"]}, facts:[] }, "compact");
 assert.equal(blockedOutput.synthesisAllowed, false);
 assert(blockedOutput.markdown.includes("不能输出确定答案"));
@@ -268,7 +272,7 @@ assert(researchSource.includes("led.synthesisAllowed===true&&blockers.length===0
 assert(researchSource.includes("if(!directValueSupported(value,quote))throw"), "DIRECT insertion must bind the value to its verified quote");
 assert(researchSource.includes("resolution_position_id") && researchSource.includes("resolution_quote"), "conflict adjudication must persist PDF provenance");
 
-assert.equal(manifest.version, "3.1.17", "manifest must identify the local candidate version");
+assert.equal(manifest.version, "3.1.25", "manifest must identify the local candidate version");
 assert(nativeSource.includes('if (explicitProfile && !noteProfiles().matches'), "a fixed Note Profile must not bypass index scope");
 assert(nativeSource.includes('reason: "library-out-of-scope"'), "item notifier must honor Note library scope");
 assert(/^https:\/\//.test(manifest.applications.zotero.update_url), "Zotero requires an HTTPS update_url to accept the manifest");
@@ -450,4 +454,4 @@ for (const [file, endMarker, validatorName] of [
   assert.equal(rejectedAndFailed.active, local.id, "an unreachable new model must restore the previous active model even without adoption");
 }
 
-console.log("3.1.17 model-switch offline regression tests passed");
+console.log("3.1.25 model-switch offline regression tests passed");

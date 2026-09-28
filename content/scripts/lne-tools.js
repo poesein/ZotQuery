@@ -1,12 +1,12 @@
 /*
- * ZotQuery-LNE Research 3.1.17
+ * ZotQuery-LNE Research 3.1.25
  * LNE Native agent-tool layer: full tools, persistent surveys, MCP definitions.
  * Loaded after lne-native.js and before research-engine.js.
  */
 (function (global) {
   "use strict";
 
-  const VERSION = "3.1.17";
+  const VERSION = "3.1.25";
   const DB = "zotquerylne";
   const FACT_TYPES = new Set([
     "naming_equivalence", "construct_boundary", "structure_resolved_range",
@@ -256,8 +256,26 @@
   }
   async function compare(question,keys,opts={}){
     const list=(Array.isArray(keys)?keys:String(keys||"").split(/[,\s]+/)).filter(Boolean);if(!list.length)throw new Error("compare needs noteKeys");
-    const notes=[];for(const raw of list){const [libMaybe,keyMaybe]=String(raw).includes(":")?String(raw).split(":",2):[opts.libraryKey||null,String(raw)];const key=keyMaybe||raw;try{const p=await api().paper(key,{libraryKey:libMaybe});const h=await api().hits(key,question,{libraryKey:libMaybe,limit:clampInt(opts.hits,3,1,8)});const counts={};for(const s of p.segments||[]){const t=s.tag||"(none)";counts[t]=(counts[t]||0)+1;}notes.push({noteKey:p.noteKey,libraryKey:p.libraryKey,paperKey:paperKeyOf({...p,zoteroParentKey:p.parentItemKey}),title:p.title,year:p.year,journal:p.journal,tagCounts:counts,untaggedNote:Object.keys(counts).length===1&&counts["(none)"],evidence:(h.hits||[]).map(s=>({line:`L${s.lineStart}-L${s.lineEnd}`,tag:s.tag||"",tagNote:segTagNote(s.tag,s.canonicalRole,p.profileId),section:s.sectionPath||s.heading||"",text:oneline(s.text,clampInt(opts.maxChars,500,120,3000))}))});}catch(e){notes.push({noteKey:key,error:e.message});}}
-    return{question,noteKeys:list,notes,howToRead:["All notes are queried with the same question.","Paper-side tags and reader inference are separated.","Use lne_trace for verbatim canonical-note context; verify hard facts in the parent PDF."]};
+    const boilerplate=new Set(["these","those","notes","note","say","tell","paper","papers","article","articles","study","studies","regarding"]);
+    const plan=api()._lexicalPlan(question),terms=(plan.terms||[]).filter(t=>!boilerplate.has(t.toLowerCase())),hard=(plan.hardTerms||[]).filter(t=>terms.includes(t)),soft=terms.filter(t=>!hard.includes(t));
+    const cap=clampInt(opts.hits,3,1,8),maxChars=clampInt(opts.maxChars,500,120,3000);
+    const notes=[];for(const raw of list){const [libMaybe,keyMaybe]=String(raw).includes(":")?String(raw).split(":",2):[opts.libraryKey||null,String(raw)];const key=keyMaybe||raw;try{
+      const p=await api().paper(key,{libraryKey:libMaybe});
+      const h=await api().hits(key,question,{libraryKey:libMaybe,limit:cap});
+      let matches=h.hits||[],retrievalMode="literal-full-question";
+      if(!matches.length&&terms.length){
+        const normTerms=terms.map(t=>api()._normIdentity(t)),hardNorm=hard.map(t=>api()._normIdentity(t)),softNorm=soft.map(t=>api()._normIdentity(t));
+        matches=(p.segments||[]).map((s,i)=>{const text=api()._normIdentity(s.text),matched=normTerms.filter(t=>text.includes(t));return{...s,matchedTerms:matched,score:matched.filter(t=>hardNorm.includes(t)).length*4+matched.filter(t=>softNorm.includes(t)).length*2,ord:i};})
+          .filter(s=>{
+            const hardHits=s.matchedTerms.filter(t=>hardNorm.includes(t)).length,softHits=s.matchedTerms.filter(t=>softNorm.includes(t)).length;
+            return hardNorm.length?hardHits>0&&(!softNorm.length||softHits>0):softHits>=Math.min(2,softNorm.length);
+          }).sort((a,b)=>b.score-a.score||a.ord-b.ord).slice(0,cap);
+        retrievalMode="note-scoped-query-terms";
+      }
+      const counts={};for(const s of p.segments||[]){const t=s.tag||"(none)";counts[t]=(counts[t]||0)+1;}
+      notes.push({noteKey:p.noteKey,libraryKey:p.libraryKey,paperKey:paperKeyOf({...p,zoteroParentKey:p.parentItemKey}),title:p.title,year:p.year,journal:p.journal,tagCounts:counts,untaggedNote:Object.keys(counts).length===1&&counts["(none)"],retrievalMode,evidence:matches.map(s=>({line:`L${s.lineStart}-L${s.lineEnd}`,tag:s.tag||"",tagNote:segTagNote(s.tag,s.canonicalRole,p.profileId),section:s.sectionPath||s.heading||"",matchedTerms:s.matchedTerms||[],text:oneline(s.text,maxChars)}))});
+    }catch(e){notes.push({noteKey:key,error:e.message});}}
+    return{question,noteKeys:list,queryPlan:{terms,hardTerms:hard,fallback:"note-scoped-query-terms after no literal full-question hit"},notes,howToRead:["All notes are queried with the same question.","Fallback matches are navigation, not verified evidence; inspect line context before synthesis.","Paper-side tags and reader inference are separated.","Use lne_trace for verbatim canonical-note context; verify hard facts in the parent PDF."]};
   }
   async function unify(keys,opts={}){
     const list=(Array.isArray(keys)?keys:String(keys||"").split(/[,\s]+/)).filter(Boolean);if(!list.length)throw new Error("unify needs noteKeys");
@@ -310,7 +328,7 @@
     ["lne_hits","Search within one indexed note",{noteKey:{type:"string"},libraryKey:{type:"string"},query:{type:"string"},limit:{type:"integer",minimum:1,maximum:200}}],
     ["lne_read","Page canonical note text",{noteKey:{type:"string"},libraryKey:{type:"string"},startLine:{type:"integer"},limit:{type:"integer",minimum:1,maximum:500}}],
     ["lne_paper","Return all parsed segments and metadata for one note",{noteKey:{type:"string"},libraryKey:{type:"string"}}],
-    ["lne_compare","Compare a question across specified notes",{question:{type:"string"},noteKeys:{},libraryKey:{type:"string"},hits:{type:"integer"},maxChars:{type:"integer"}}],
+    ["lne_compare","Compare specified notes using exact full-question text first, then note-scoped query terms while preserving mutation identifiers. Hits are navigation until original sources are checked.",{question:{type:"string"},noteKeys:{},libraryKey:{type:"string"},hits:{type:"integer"},maxChars:{type:"integer"}}],
     ["lne_unify","Collapse note keys to paper identities and identify duplicate note generations",{noteKeys:{},libraryKey:{type:"string"}}],
     ["lne_search_raw","Audit uncollapsed search ranking",{question:{type:"string"},limit:{type:"integer"},hits:{type:"integer"},maxChars:{type:"integer"},lexicalOnly:{type:"boolean"}}],
     ["lne_survey_plan","Plan a broad generic multi-axis literature survey",{question:{type:"string"},preset:{type:"string",enum:["quick","balanced","exhaustive","audit"]},anchors:{},axes:{},maxQueries:{type:"integer"},saturationRounds:{type:"integer"},newWorkThreshold:{type:"number"}}],

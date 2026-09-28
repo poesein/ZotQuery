@@ -20,6 +20,11 @@
       metadata_json TEXT NOT NULL, error_code TEXT
     )`);
     await query(`CREATE INDEX IF NOT EXISTS ${DB}.idx_answer_session ON answer_runs(session_id,created_at)`);
+    await query(`CREATE TABLE IF NOT EXISTS ${DB}.visual_session_targets (
+      library_key TEXT NOT NULL, parent_item_key TEXT NOT NULL, attachment_key TEXT NOT NULL,
+      session_id TEXT NOT NULL, position_id TEXT NOT NULL,
+      PRIMARY KEY(library_key,parent_item_key,attachment_key)
+    )`);
     // A process restart cannot resume an HTTP request. Evidence stays intact.
     await query(`UPDATE ${DB}.answer_runs SET status='interrupted' WHERE status='running'`);
     Zotero.ZotQueryHistory = { begin, bindSession, checkpoint, resumeBudget, resumeState, finish, fail, list, read, remove, shutdown, isActive: id => active.has(id) };
@@ -136,6 +141,7 @@
       if (Zotero.ZotQueryModelAgent?.isSessionActive?.(id) || Zotero.ZotQueryVision?.isSessionActive?.(id) || runs.some(r => active.has(r.run_id) || r.status === "running")) throw new Error("研究仍在执行，请先停止后再删除");
       if (session) {
         if (Zotero.ZotQueryVision) await query(`DELETE FROM ${DB}.visual_evidence WHERE session_id=?`, [id]);
+        await query(`DELETE FROM ${DB}.visual_session_targets WHERE session_id=?`, [id]);
         await query(`DELETE FROM ${DB}.fact_assessment_revisions WHERE fact_id IN (SELECT fact_id FROM ${DB}.fact_records WHERE session_id=?)`, [id]);
         for (const table of ["fact_resolutions","fact_records","document_chunks_listed","positions","answer_runs","sessions"]) await query(`DELETE FROM ${DB}.${table} WHERE session_id=?`, [id]);
       } else await query(`DELETE FROM ${DB}.answer_runs WHERE run_id=? AND session_id IS NULL`, [id]);

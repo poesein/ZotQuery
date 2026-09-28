@@ -1,4 +1,4 @@
-/* ZotQuery 3.1.17 research workbench controller. */
+/* ZotQuery 3.1.25 research workbench controller. */
 (function () {
   "use strict";
 

@@ -1,0 +1,633 @@
+{
+  "version": 1,
+  "identity": {
+    "item": [
+      "library",
+      "parentItemKey"
+    ],
+    "pdf": [
+      "library",
+      "parentItemKey",
+      "attachmentKey"
+    ],
+    "research": [
+      "sessionId",
+      "positionId"
+    ],
+    "title": "navigation-only"
+  },
+  "effects": {
+    "read": "No state change",
+    "evidence-write": "Changes research state; not a Zotero library write",
+    "reading-write": "Changes managed reading state and may update a Zotero note or completion tag",
+    "library-write": "Changes a Zotero item or note",
+    "configuration-write": "Changes local profile configuration"
+  },
+  "tools": {
+    "zotquery_add_item_tag": {
+      "domain": "library",
+      "effect": "library-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_compare": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_create_child_note": {
+      "domain": "library",
+      "effect": "library-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_depth_qc_preview": {
+      "domain": "reading",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_evidence_assess_fact": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_evidence_context": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_document": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_fact": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_evidence_finalize": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_evidence_next_actions": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_evidence_page_image": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_plan": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_evidence_positions": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_promote_context_chunk": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_promote_notes": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_research_start": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_resolve_conflict": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_evidence_retry_orchestration": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_review": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_evidence_session": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_evidence_sweep": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_verify_note": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_evidence_visual_list": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_evidence_visual_observe": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_evidence_visual_session_start": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_find": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_get_selected_items": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_health": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_hits": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_library_get_collection_items": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_library_get_item": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_library_list_children": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_library_list_collections": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_library_list_groups": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_library_read_attachment_fulltext": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_library_search_items": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false,
+      "implementation": "zotero-local-api"
+    },
+    "zotquery_list_answers": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_list_documents": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_list_facts": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_list_positions": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_list_research": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_list_saved_images": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_native_read_call": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-adapter",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_native_read_catalog": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-adapter",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_note_profile_draft": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_note_profile_install": {
+      "domain": "configuration",
+      "effect": "configuration-write",
+      "origin": "native",
+      "compact": "hidden",
+      "full": "hidden",
+      "highImpact": true
+    },
+    "zotquery_note_profile_list": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_note_profile_select": {
+      "domain": "configuration",
+      "effect": "configuration-write",
+      "origin": "native",
+      "compact": "hidden",
+      "full": "hidden",
+      "highImpact": true
+    },
+    "zotquery_note_profile_validate": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_output_profile_install": {
+      "domain": "configuration",
+      "effect": "configuration-write",
+      "origin": "native",
+      "compact": "hidden",
+      "full": "hidden",
+      "highImpact": true
+    },
+    "zotquery_output_profile_list": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_output_profile_validate": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_paper": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_preview_note_profile_install": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "bridge-preview",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_preview_note_profile_select": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "bridge-preview",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_preview_output_profile_install": {
+      "domain": "configuration",
+      "effect": "read",
+      "origin": "bridge-preview",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_preview_pdf_page": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_probe": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_read": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_read_answer_chunk": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_read_context": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_read_document_chunks": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_read_ledger": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_read_saved_image": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_reading_batch_record_failure": {
+      "domain": "reading",
+      "effect": "reading-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_reading_batch_status": {
+      "domain": "reading",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_reading_generation_profile": {
+      "domain": "reading",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_research_render": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_research_result": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_search": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_search_document": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "bridge-read",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_search_raw": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_set_item_tag": {
+      "domain": "reading",
+      "effect": "reading-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_survey_audit": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_survey_deep_read": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_survey_fact": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_survey_plan": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_survey_results": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_survey_review": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": true
+    },
+    "zotquery_survey_run": {
+      "domain": "evidence",
+      "effect": "evidence-write",
+      "origin": "native",
+      "compact": "hidden",
+      "highImpact": false
+    },
+    "zotquery_survey_screen": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_trace": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_trace_many": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_unify": {
+      "domain": "evidence",
+      "effect": "read",
+      "origin": "native",
+      "compact": "catalog",
+      "highImpact": false
+    },
+    "zotquery_upsert_child_note": {
+      "domain": "reading",
+      "effect": "reading-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    }
+  }
+}

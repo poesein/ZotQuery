@@ -1,0 +1,64 @@
+{
+  "id": "strawberry-vnext-depth",
+  "version": "1.0.0",
+  "name": "🍓精读笔记 vNext 深度生成协议",
+  "readingProfileId": "strawberry-vnext",
+  "kind": "reading-generation-protocol",
+  "sourcePolicy": {
+    "originalResearchRequiresCompletePdfText": true,
+    "requireContiguousReadToNull": true,
+    "figureImagesWhenTextInsufficient": true,
+    "sourceLocatorsRequired": true
+  },
+  "evidencePolicy": {
+    "separateRoles": ["实验支持", "作者陈述", "作者解释", "综合推断", "我的判断"],
+    "noInventedQuantities": true,
+    "absenceMustBeExplicit": true
+  },
+  "branches": {
+    "original_research": {
+      "description": "逐一复核原始实验及核心图。复杂 CNS 机制论文允许更长输出，不设硬字数上限。",
+      "requiredSections": {
+        "question": ["核心科学问题", "可检验假设"],
+        "systems": ["实验体系", "可比性"],
+        "evidence": ["Evidence Unit", "证据单元"],
+        "figures": ["逐图", "Figure", "图表精读"],
+        "causality": ["necessity", "必要性", "sufficiency", "充分性", "rescue", "正交验证"],
+        "negative": ["阴性结果", "冲突", "异质性"],
+        "methods": ["Methods", "可复用方法", "方法学"],
+        "limitations": ["局限", "替代解释"],
+        "lineage": ["原创研究谱系", "关联研究谱系"],
+        "project": ["当前课题", "课题价值"],
+        "hypotheses": ["实验假设", "后续实验"]
+      },
+      "minEvidenceUnits": 2,
+      "minCoreFigures": 1,
+      "figureFields": ["design", "result", "quantitation", "authorInterpretation", "evidenceJudgment", "canProve", "cannotProve"],
+      "softVisibleCharacters": 10000
+    },
+    "review": {
+      "description": "说明综述定位与机制框架，区分综述作者判断和所引原创实验。",
+      "requiredSections": {
+        "position": ["综述定位"],
+        "framework": ["机制框架"],
+        "distance": ["证据距离"],
+        "lineage": ["原创研究谱系"],
+        "boundary": ["知识边界"],
+        "project": ["当前课题", "课题价值"]
+      },
+      "softVisibleCharacters": 6500
+    },
+    "design_note": {
+      "description": "独立的设计说明，不伪装为实验结果或综述。",
+      "requiredSections": {
+        "goal": ["设计目标"],
+        "constraints": ["设计约束"],
+        "rationale": ["设计依据"],
+        "validation": ["验证计划"],
+        "risks": ["风险", "失败判据"],
+        "project": ["当前课题", "课题价值"]
+      },
+      "softVisibleCharacters": 4500
+    }
+  }
+}

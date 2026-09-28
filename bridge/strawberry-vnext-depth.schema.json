@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "description": "Generation audit metadata. Original research requires fullTextRead, evidenceUnits, coreFigureIds, figures and causalTests; review requires originalStudies; design_note requires designBasis and validationCriterion. Text fields checked by Depth QC must also appear in the submitted HTML.",
+  "properties": {
+    "articleType": {"type": "string", "enum": ["original_research", "review", "design_note"]},
+    "fullTextRead": {
+      "type": "object",
+      "description": "Original research only. Record every contiguous PDF text read from offset 0 to the terminal nextOffset=null. The final sum of chunk lengths must equal totalCharacters.",
+      "properties": {
+        "attachmentKey": {"type": "string", "pattern": "^[A-Z0-9]{8}$", "description": "PDF attachment key belonging to the parent Zotero item."},
+        "totalCharacters": {"type": "integer", "minimum": 1},
+        "chunks": {"type": "array", "minItems": 1, "items": {
+          "type": "object",
+          "properties": {
+            "offset": {"type": "integer", "minimum": 0},
+            "length": {"type": "integer", "minimum": 1, "description": "Actual returned character count, not the requested limit."},
+            "nextOffset": {"type": ["integer", "null"], "minimum": 0}
+          },
+          "required": ["offset", "length", "nextOffset"], "additionalProperties": false
+        }}
+      },
+      "required": ["attachmentKey", "totalCharacters", "chunks"], "additionalProperties": false
+    },
+    "evidenceUnits": {"type": "array", "minItems": 2, "items": {
+      "type": "object",
+      "properties": {
+        "claim": {"type": "string", "minLength": 12, "description": "Evidence claim; its first 24 normalized characters must occur in the HTML body."},
+        "sourceLocator": {"type": "string", "minLength": 12},
+        "role": {"type": "string", "enum": ["实验支持", "作者陈述", "作者解释", "综合推断", "我的判断"]},
+        "title": {"type": "string"}, "system": {"type": "string"}, "perturbation": {"type": "string"},
+        "control": {"type": "string"}, "readout": {"type": "string"}, "result": {"type": "string"},
+        "quantitation": {"type": "string"}, "boundary": {"type": "string"},
+        "authorInterpretation": {"type": "string"}, "evidenceJudgment": {"type": "string"}
+      },
+      "required": ["claim", "sourceLocator", "role"], "additionalProperties": false
+    }},
+    "coreFigureIds": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "description": "Exhaustive IDs of core figures covered by figures. Use the same IDs in the HTML, such as Figure 1."},
+    "figures": {"type": "array", "minItems": 1, "items": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "sourceLocator": {"type": "string", "minLength": 12},
+        "design": {"type": "string", "minLength": 12},
+        "result": {"type": "string", "minLength": 12},
+        "quantitation": {"type": "string", "minLength": 12, "description": "State not reported explicitly when the paper has no recoverable numeric result."},
+        "authorInterpretation": {"type": "string", "minLength": 12},
+        "evidenceJudgment": {"type": "string", "minLength": 12},
+        "canProve": {"type": "string", "minLength": 12},
+        "cannotProve": {"type": "string", "minLength": 12},
+        "expectedPanelIds": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "panels": {"type": "array", "items": {
+          "type": "object", "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "design": {"type": "string", "minLength": 12},
+            "result": {"type": "string", "minLength": 12}
+          }, "required": ["id", "design", "result"], "additionalProperties": false
+        }}
+      },
+      "required": ["id", "sourceLocator", "design", "result", "quantitation", "authorInterpretation", "evidenceJudgment", "canProve", "cannotProve"],
+      "additionalProperties": false
+    }},
+    "causalTests": {
+      "type": "object", "description": "Each dimension needs status and explanation. A tested dimension also needs sourceLocator. The explanation must occur in the HTML body.",
+      "properties": {
+        "necessity": {"type": "object", "properties": {"status": {"type": "string", "enum": ["tested", "not_tested", "not_applicable"]}, "explanation": {"type": "string", "minLength": 12}, "sourceLocator": {"type": "string", "minLength": 12}}, "required": ["status", "explanation"], "additionalProperties": false},
+        "sufficiency": {"type": "object", "properties": {"status": {"type": "string", "enum": ["tested", "not_tested", "not_applicable"]}, "explanation": {"type": "string", "minLength": 12}, "sourceLocator": {"type": "string", "minLength": 12}}, "required": ["status", "explanation"], "additionalProperties": false},
+        "rescue": {"type": "object", "properties": {"status": {"type": "string", "enum": ["tested", "not_tested", "not_applicable"]}, "explanation": {"type": "string", "minLength": 12}, "sourceLocator": {"type": "string", "minLength": 12}}, "required": ["status", "explanation"], "additionalProperties": false},
+        "orthogonalValidation": {"type": "object", "properties": {"status": {"type": "string", "enum": ["tested", "not_tested", "not_applicable"]}, "explanation": {"type": "string", "minLength": 12}, "sourceLocator": {"type": "string", "minLength": 12}}, "required": ["status", "explanation"], "additionalProperties": false}
+      },
+      "required": ["necessity", "sufficiency", "rescue", "orthogonalValidation"], "additionalProperties": false
+    },
+    "originalStudies": {"type": "array", "minItems": 2, "items": {
+      "type": "object", "properties": {
+        "citation": {"type": "string", "minLength": 12},
+        "contribution": {"type": "string", "minLength": 12},
+        "sourceLocator": {"type": "string", "minLength": 12}
+      }, "required": ["citation", "contribution", "sourceLocator"], "additionalProperties": false
+    }},
+    "designBasis": {"type": "string", "minLength": 12},
+    "validationCriterion": {"type": "string", "minLength": 12}
+  },
+  "required": ["articleType"],
+  "additionalProperties": false
+}

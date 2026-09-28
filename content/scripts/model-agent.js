@@ -1,8 +1,8 @@
-/* ZotQuery 3.1.17 in-process research agent and output-model adapters. */
+/* ZotQuery 3.1.25 in-process research agent and output-model adapters. */
 (function (global) {
   "use strict";
 
-  const VERSION = "3.1.17";
+  const VERSION = "3.1.25";
   const PREF = "zotquery.modelAgent";
   const MAX_TEMPLATE_CHARS = 131072;
   const REASONING_EFFORTS = new Set(["auto", "none", "minimal", "low", "medium", "high", "xhigh", "max"]);

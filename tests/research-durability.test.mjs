@@ -73,6 +73,7 @@ test('delete is scoped, transactional, active-safe and preserves source index',a
   await assert.rejects(f.history.remove('S'),/仍在执行/);
   await f.history.finish(run,{markdown:'Saved answer',synthesisAllowed:false});
   await f.query("INSERT INTO zotqueryresearch.visual_evidence(visual_id,session_id,position_id,library_key,attachment_key,page_number,crop_json,pdf_hash,image_hash,width,height,image_base64,created_at) VALUES('V','S','P','user','PDF00001',1,'{}','hash','hash',1,1,'FAKE_IMAGE','t')");
+  await f.query("INSERT INTO zotqueryresearch.visual_session_targets(library_key,parent_item_key,attachment_key,session_id,position_id) VALUES('user','PARENT01','PDF00001','S','P')");
   await f.query("INSERT INTO zotqueryresearch.sessions(session_id,question,created_at,updated_at,status) VALUES('OTHER','Other research','t','t','reviewing')");
   await f.api.positionContext('P',{level:0});
   await f.api.recordFact({positionId:'P',slot:'range',value:'40–45',valueType:'residue_range',sourceQuote:'Protein X spans residues 40–45.',evidenceStatus:'DIRECT',assessment});
@@ -81,13 +82,14 @@ test('delete is scoped, transactional, active-safe and preserves source index',a
   await assert.rejects(f.history.remove('S'),/synthetic failure/);
   assert.equal((await f.history.read('S')).selected.markdown,'Saved answer');
   assert.equal(f.db.prepare('SELECT COUNT(*) n FROM zotqueryresearch.fact_records').get().n,1);
+  assert.equal(f.db.prepare('SELECT COUNT(*) n FROM zotqueryresearch.visual_session_targets').get().n,1);
   f.db.exec('DROP TRIGGER zotqueryresearch.block_delete');
   const forgotten=[];f.box.Zotero.ZotQueryModelAgent={isSessionActive:()=>true,forgetSession:id=>forgotten.push(id)};
   await assert.rejects(f.history.remove('S'),/仍在执行/);
   f.box.Zotero.ZotQueryModelAgent.isSessionActive=()=>false;
   await f.history.remove('S');assert.deepEqual(forgotten,['S']);
   await assert.rejects(f.history.read('S'),/不存在/);await assert.rejects(f.history.begin({sessionId:'S',question:'Synthetic research'}),/已删除/);
-  for(const table of ['positions','answer_runs','fact_records','fact_resolutions','fact_assessment_revisions','document_chunks_listed','visual_evidence']) assert.equal(f.db.prepare(`SELECT COUNT(*) n FROM zotqueryresearch.${table}`).get().n,0,table);
+  for(const table of ['positions','answer_runs','fact_records','fact_resolutions','fact_assessment_revisions','document_chunks_listed','visual_evidence','visual_session_targets']) assert.equal(f.db.prepare(`SELECT COUNT(*) n FROM zotqueryresearch.${table}`).get().n,0,table);
   assert.equal((await f.history.list()).results[0].id,'OTHER');
   assert.equal(f.db.prepare('SELECT COUNT(*) n FROM zotquery.chunks').get().n,1);
  }finally{f.close();}

@@ -33,7 +33,7 @@
       errors.push("templateMarkdown must be non-empty Markdown of at most 65536 characters");
     if (value.templateSha256 !== undefined && !/^[a-f0-9]{64}$/i.test(String(value.templateSha256)))
       errors.push("templateSha256 must be a 64-character SHA-256 hex digest");
-    if (value.layout !== undefined && value.layout !== "structured-vnext") errors.push("unknown output layout");
+    if (value.layout !== undefined && !["sections", "structured-vnext"].includes(value.layout)) errors.push("unknown output layout");
     return { valid: !errors.length, errors };
   }
   function register(value, source) { const check = validate(value); if (!check.valid) throw new Error(check.errors.join("; ")); const profile = { ...value, source };

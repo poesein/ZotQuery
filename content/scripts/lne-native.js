@@ -1,5 +1,5 @@
 /**
- * ZotQuery Core 3.1.17 — note parsing and shared semantic retrieval.
+ * ZotQuery Core 3.1.25 — note parsing and shared semantic retrieval.
  *
  * Scope:
  * - Zotero Notes are the source of truth (no exported Markdown directory)
@@ -16,7 +16,7 @@
 (function (global) {
   "use strict";
 
-  const VERSION = "3.1.17";
+  const VERSION = "3.1.25";
   const DB_ALIAS = "zotquerylne";
   const DB_FILE = "zotquery-lne.sqlite";
   const SCHEMA_VERSION = 3;
@@ -1201,7 +1201,13 @@
         state.queryProbe = probe;
       }
       const vectors = model ? Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(*) FROM ${DB_ALIAS}.segment_vectors WHERE model_id=?`, [model.id]) || 0) : 0;
-      const coverage = uniqueHashes ? vectors / uniqueHashes : 0;
+      // The vector table intentionally retains reusable embeddings for hashes
+      // no longer present in current notes. Count only current, model-matched
+      // segment hashes in the numerator of corpus coverage.
+      const coveredUniqueSegments = model ? Number(await Zotero.DB.valueQueryAsync(`SELECT COUNT(DISTINCT s.hash)
+        FROM ${DB_ALIAS}.segments s JOIN ${DB_ALIAS}.segment_vectors v ON v.hash=s.hash
+        WHERE v.model_id=? AND v.dim=? AND v.embedding IS NOT NULL`, [model.id, model.dimensions]) || 0) : 0;
+      const coverage = uniqueHashes ? coveredUniqueSegments / uniqueHashes : 0;
       return {
         ok: !state.lastError, product: "ZotQuery Core", version: VERSION, schemaVersion: SCHEMA_VERSION,
         parserVersion: PARSER_VERSION, canonicalizerVersion: CANON_VERSION, source: "zotero-notes",
@@ -1210,7 +1216,8 @@
           enabled: semanticEnabled(), configured: !!model, available: !!probe?.ready, queryReady: !!probe?.ready,
           queryProbeAt: probe?.at ? new Date(probe.at).toISOString() : null,
           queryError: probe?.error || null, modelId: model?.id || null, dimensions: model?.dimensions || 0,
-          vectors, totalUniqueSegments: uniqueHashes, coverage, coveragePercent: Math.round(coverage * 10000) / 100,
+          vectors, coveredUniqueSegments, staleOrInvalidVectors: Math.max(0, vectors - coveredUniqueSegments),
+          totalUniqueSegments: uniqueHashes, coverage, coveragePercent: Math.round(coverage * 10000) / 100,
           pending: state.vectorPending.size, indexing: state.vectorSyncing, workerLoaded: !!state.vectorWorker,
           workerModelId: state.vectorWorkerModelId, lastSyncAt: state.lastVectorSyncAt, lastError: state.lastVectorError
         },

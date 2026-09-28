@@ -2,7 +2,7 @@
 
 适应场景：解决研究者资料库庞大，每次想基于某个问题查询文献都会面临**记忆篇目不全和整理工作庞大**的这两大问题，直接询问AI又会面临**引用篇目少与结果可靠性存疑**两大问题。该插件即可通过详细检索zotero中已有的PDF原文和研究者自身记录的笔记，输出相应条目并搭建完善的上下文阅读、审阅决策与核实要求，迫使 AI 给出一个全面、可靠、详实的回答。
 
-[English](README-EN.md) · [下载 3.0.14 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
+[English](README-EN.md) · [下载 3.1.25 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.1.25) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
 
 ## 为什么使用 ZotQuery？
 
@@ -19,7 +19,7 @@
 
 ![ZotQuery 双源检索与证据研究架构图](docs/assets/zotquery-architecture.png)
 
-图中 Core、Search、Survey、Evidence、Agent 和 MCP 是**同一个 Zotero 插件内的职责模块**，不是六个独立服务或模型。底部三个数据库名对应 3.0.14 使用的 `zotquery.sqlite`、`zotquery-lne.sqlite` 和 `zotquery-research.sqlite`。embedding 服务除本机外也可位于可信私有 IPv4 局域网。详见[架构详解](docs/ARCHITECTURE-3.0-ZH.md)。
+图中 Core、Search、Survey、Evidence、Agent 和 MCP 是**同一个 Zotero 插件内的职责模块**，不是六个独立服务或模型。底部三个数据库名对应当前使用的 `zotquery.sqlite`、`zotquery-lne.sqlite` 和 `zotquery-research.sqlite`。embedding 服务除本机外也可位于可信私有 IPv4 局域网。详见[架构详解](docs/ARCHITECTURE-3.0-ZH.md)。
 
 | 通路或模块 | 做什么 | 不做什么 |
 | --- | --- | --- |
@@ -31,7 +31,7 @@
 共享的 **embedding 模型只负责把文本变成检索向量**。内置 Nomic/ONNX 路线或配置的 embedding 服务都不是自动撰写答案的聊天模型；使用哪种外部生成模型，由调用 ZotQuery 的客户端自行决定。
 
 ## 安装与开始使用
-**注：插件件主要承担zotero PDF和notes检索和证据审计与规范功能，输出需要依赖大模型整合证据链（已适配API和本地MCP连接，ChatGPT网页连接正在构建中）。**
+**注：插件主要承担 Zotero PDF 和笔记检索、证据审计与规范；回答由所连接的大模型生成。支持本地 MCP、API；网页 ChatGPT 连接需另行配置 bridge/tunnel。**
 | 项目 | 要求或默认行为 |
 | --- | --- |
 | Zotero | 10.0.x；请通过插件管理器安装 XPI |
@@ -40,12 +40,12 @@
 | Note 索引 | 默认 My Library，自动变更同步关闭；可在设置中选择范围和手动同步 |
 | 网络 | 本机推理可在本地运行；使用局域网服务时，发送的文本和可能的凭据会经过该网络 |
 
-1. 备份 Zotero 数据目录，从[3.0.14 发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.0.14)下载 XPI，在 Zotero 插件管理器中从文件安装并重启。3.0.14 可升级同一独立扩展 ID 的 3.0.12/3.0.13；使用旧 ZotSeek ID 的早期版本不会原位升级或自动迁移索引。同版本资源更新不会触发自动升级；已安装 3.0.14 的用户如需取得刷新后的包，须手动重装 XPI。
+1. 备份 Zotero 数据目录，从[3.1.25 发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.1.25)下载 XPI，在 Zotero 插件管理器中从文件安装并重启。3.1.25 沿用独立扩展 ID；使用旧 ZotSeek ID 的早期版本不会原位升级或自动迁移索引。同版本资源更新不会触发自动升级。
 2. 打开 ZotQuery 设置，选择 PDF 范围、Note 范围和一个活动向量模型。先用少量 PDF 与笔记测试。若使用局域网 Ollama，确认 Zotero 所在机器能访问服务；公网主机不受支持。
 3. 建立 PDF 索引并同步笔记。检查研究系统状态中的 PDF 覆盖、Note 向量覆盖、共享模型一致性及**查询时服务可用性**；缓存达到 100% 不代表当前服务在线。
 4. 从搜索开始探索，或让支持 MCP 的客户端按下方研究流程工作。需要原始证据时，请打开 PDF 上下文，不要只引用搜索摘要或笔记。
 
-普通笔记由 `generic` Note Profile 解析；内置的 `strawberry-vnext` 仅兼容一种精读笔记**格式**，不含个人研究方向。Output Profile 包括 `compact`、`standard`、`exact` 和 `exhaustive-vnext`，只改变呈现，不改变证据标准。详见[配置说明](docs/PROFILES-3.0-ZH.md)。
+普通笔记由 `generic` Note Profile 解析；内置的 `strawberry-vnext` 仅兼容一种精读笔记**格式**，不含个人研究方向。独立的 [深度生成协议](docs/READING-GENERATION-PROTOCOL-ZH.md) 在通过 Depth QC 后才允许写入托管笔记与完成标签。Output Profile 包括 `compact`、`standard`、`exact` 和 `exhaustive-vnext`，只改变呈现，不改变证据标准。详见[配置说明](docs/PROFILES-3.0-ZH.md)。
 
 ## 一次可审计研究怎样进行？
 
@@ -59,7 +59,7 @@
 
 ## 本地 MCP、数据与隐私
 
-统一 MCP 在 Zotero 本地 API 的 `/zotquery/mcp` 提供 **43 个 `zotquery_*` 工具**，其中部分会修改本地研究状态。客户端必须发送在设置页取得的 `Authorization: Bearer <令牌>`；不要把 Zotero 本地 API 端口通过代理开放到局域网或公网。默认端口通常是 `23119`，以你的 Zotero 设置为准。
+统一 MCP 在 Zotero 本地 API 的 `/zotquery/mcp` 提供 **67 个 `zotquery_*` 工具**，其中部分会修改本地研究状态。客户端必须发送在设置页取得的 `Authorization: Bearer <令牌>`；不要把 Zotero 本地 API 端口通过代理开放到局域网或公网。默认端口通常是 `23119`，以你的 Zotero 设置为准。
 
 PDF 索引、笔记/Survey、证据会话分别保存在上述三个本地 SQLite 文件。公开 XPI 不包含你的文献、笔记、数据库、个人偏好、模型服务地址或密钥。配置局域网 embedding 服务时，片段和查询会发往该服务；使用普通 HTTP 时，文本及可能的凭据在局域网上不加密。外部 AI 客户端是否继续把材料发往云端，取决于客户端配置。**插件本地存储不等于整个研究链路绝对离线。**
 
