@@ -2,11 +2,11 @@
 
 Dual-source PDF and Note retrieval, evidence review, and traceable research workflows inside Zotero 10.
 
-[简体中文](README.md) · [Download the 3.1.25 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.1.25) · [Architecture notes (Chinese)](docs/ARCHITECTURE-3.0-ZH.md) · [Report an issue](https://github.com/poesein/ZotQuery/issues)
+[简体中文](README.md) · [Download the 3.1.26 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.1.26) · [Architecture notes (Chinese)](docs/ARCHITECTURE-3.0-ZH.md) · [Report an issue](https://github.com/poesein/ZotQuery/issues)
 
 ZotQuery does not treat a search hit as a verified answer. It helps researchers find leads in their Zotero library and reading notes, return to locatable PDF passages, record reviews and facts, and see which evidence is still missing. It runs inside Zotero and also exposes authenticated local MCP tools to external AI clients.
 
-Version **3.1.25** supports Zotero 10.0.x. One existing Zotero profile passed installed-version, preserved-index, live embedding, profile-validation, PDF-preview, and authenticated MCP checks. Fresh-profile installation, migration from the old extension ID, and switching between two live model hosts have not received end-to-end acceptance testing. Back up your data and try it in a recoverable environment first.
+Version **3.1.26** supports Zotero 10.0.x. One existing Zotero profile passed installed-version, preserved-index, live embedding, profile-validation, PDF-preview, and authenticated MCP checks. Fresh-profile installation, migration from the old extension ID, and switching between two live model hosts have not received end-to-end acceptance testing. Back up your data and try it in a recoverable environment first.
 
 ## Why use ZotQuery?
 
@@ -42,7 +42,7 @@ The shared **embedding model converts text into retrieval vectors**. Bundled Nom
 | Note scope | My Library by default; automatic change sync is off until enabled, with manual sync available |
 | Network | Local inference can stay on the machine; a LAN server receives the text—and possibly credentials—sent to it |
 
-1. Back up the Zotero data directory. Download the XPI from the [3.1.25 release](https://github.com/poesein/ZotQuery/releases/tag/v3.1.25), install it from a file in Zotero's add-on manager, and restart. Version 3.1.25 keeps the isolated extension ID and cannot automatically upgrade or migrate earlier builds that used ZotSeek's ID. A same-version asset refresh does not trigger auto-update.
+1. Back up the Zotero data directory. Download the XPI from the [3.1.26 release](https://github.com/poesein/ZotQuery/releases/tag/v3.1.26), install it from a file in Zotero's add-on manager, and restart. Version 3.1.26 keeps the isolated extension ID and cannot automatically upgrade or migrate earlier builds that used ZotSeek's ID. A same-version asset refresh does not trigger auto-update.
 2. In ZotQuery settings, choose the PDF and Note scopes and one active embedding model. Start with a small mixed sample. If using LAN Ollama, verify connectivity from the Zotero machine; public Internet inference hosts are not supported.
 3. Index PDFs and sync Notes. Inspect PDF coverage, Note-vector coverage, shared-model agreement, and **query-time model readiness** separately. A complete cache does not mean a stopped server can answer a new dense query.
 4. Explore with search, or let an MCP-capable client follow the research workflow below. For primary evidence, open PDF context rather than quoting a search preview or a Note alone.

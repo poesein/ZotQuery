@@ -2,7 +2,7 @@
 
 适应场景：解决研究者资料库庞大，每次想基于某个问题查询文献都会面临**记忆篇目不全和整理工作庞大**的这两大问题，直接询问AI又会面临**引用篇目少与结果可靠性存疑**两大问题。该插件即可通过详细检索zotero中已有的PDF原文和研究者自身记录的笔记，输出相应条目并搭建完善的上下文阅读、审阅决策与核实要求，迫使 AI 给出一个全面、可靠、详实的回答。
 
-[English](README-EN.md) · [下载 3.1.25 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.1.25) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
+[English](README-EN.md) · [下载 3.1.26 XPI](https://github.com/poesein/ZotQuery/releases/tag/v3.1.26) · [架构详解](docs/ARCHITECTURE-3.0-ZH.md) · [问题反馈](https://github.com/poesein/ZotQuery/issues)
 
 ## 为什么使用 ZotQuery？
 
@@ -40,7 +40,7 @@
 | Note 索引 | 默认 My Library，自动变更同步关闭；可在设置中选择范围和手动同步 |
 | 网络 | 本机推理可在本地运行；使用局域网服务时，发送的文本和可能的凭据会经过该网络 |
 
-1. 备份 Zotero 数据目录，从[3.1.25 发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.1.25)下载 XPI，在 Zotero 插件管理器中从文件安装并重启。3.1.25 沿用独立扩展 ID；使用旧 ZotSeek ID 的早期版本不会原位升级或自动迁移索引。同版本资源更新不会触发自动升级。
+1. 备份 Zotero 数据目录，从[3.1.26 发布页](https://github.com/poesein/ZotQuery/releases/tag/v3.1.26)下载 XPI，在 Zotero 插件管理器中从文件安装并重启。3.1.26 沿用独立扩展 ID；使用旧 ZotSeek ID 的早期版本不会原位升级或自动迁移索引。同版本资源更新不会触发自动升级。
 2. 打开 ZotQuery 设置，选择 PDF 范围、Note 范围和一个活动向量模型。先用少量 PDF 与笔记测试。若使用局域网 Ollama，确认 Zotero 所在机器能访问服务；公网主机不受支持。
 3. 建立 PDF 索引并同步笔记。检查研究系统状态中的 PDF 覆盖、Note 向量覆盖、共享模型一致性及**查询时服务可用性**；缓存达到 100% 不代表当前服务在线。
 4. 从搜索开始探索，或让支持 MCP 的客户端按下方研究流程工作。需要原始证据时，请打开 PDF 上下文，不要只引用搜索摘要或笔记。
