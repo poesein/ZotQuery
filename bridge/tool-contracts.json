@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "identity": {
     "item": [
       "library",
@@ -227,6 +227,20 @@
       "compact": "catalog",
       "highImpact": false
     },
+    "zotquery_library_apply_plan": {
+      "domain": "library",
+      "effect": "library-write",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": true
+    },
+    "zotquery_library_collection_preview": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
     "zotquery_library_get_collection_items": {
       "domain": "library",
       "effect": "read",
@@ -242,6 +256,20 @@
       "compact": "direct",
       "highImpact": false,
       "implementation": "zotero-local-api"
+    },
+    "zotquery_library_import_item_preview": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
+    "zotquery_library_item_organization": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
     },
     "zotquery_library_list_children": {
       "domain": "library",
@@ -267,6 +295,13 @@
       "highImpact": false,
       "implementation": "zotero-local-api"
     },
+    "zotquery_library_organize_preview": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
+    },
     "zotquery_library_read_attachment_fulltext": {
       "domain": "library",
       "effect": "read",
@@ -282,6 +317,13 @@
       "compact": "direct",
       "highImpact": false,
       "implementation": "zotero-local-api"
+    },
+    "zotquery_library_tag_inventory": {
+      "domain": "library",
+      "effect": "read",
+      "origin": "native",
+      "compact": "direct",
+      "highImpact": false
     },
     "zotquery_list_answers": {
       "domain": "evidence",

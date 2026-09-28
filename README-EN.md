@@ -49,6 +49,8 @@ The shared **embedding model converts text into retrieval vectors**. Bundled Nom
 
 The built-in `generic` Note Profile handles ordinary notes; `strawberry-vnext` is compatibility with one reading-note **format**, not a research-topic preset. A separate [reading generation protocol](docs/READING-GENERATION-PROTOCOL-ZH.md) gates managed-note writes and the completion tag on Depth QC. Output Profiles (`compact`, `standard`, `exact`, `exhaustive-vnext`) change presentation, not evidence rules. See [Profiles](docs/PROFILES-3.0-ZH.md).
 
+The [library organization API](docs/LIBRARY-ORGANIZATION-ZH.md) adds paged tag inventory, previewed collection moves and ordinary tag changes, Zotero Style rating/remark edits, and duplicate-checked structured metadata import.
+
 ## A traceable research workflow
 
 1. Run `zotquery_evidence_plan` to inspect required/optional terms, aliases, and estimated scope. Review automatically planned hard constraints before treating them as the study boundary.

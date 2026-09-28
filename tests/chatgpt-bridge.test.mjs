@@ -165,6 +165,8 @@ test("stdio MCP bridge exposes scoped native research, read-only library, and pr
         { name: "zotquery_evidence_visual_session_start", description: "Start visual session", inputSchema: { type: "object", properties: { library: { type: "string" }, parentItemKey: { type: "string" }, attachmentKey: { type: "string" } }, required: ["library", "parentItemKey"] } },
         { name: "zotquery_reading_batch_record_failure", description: "Record failure", inputSchema: { type: "object", properties: { collectionKey: { type: "string" }, parentItemKey: { type: "string" }, readingProfileId: { type: "string" }, reason: { type: "string" } }, required: ["collectionKey", "parentItemKey", "readingProfileId", "reason"] } },
         ...["list_groups","list_collections","search_items","get_collection_items","get_item","list_children","read_attachment_fulltext"].map(suffix=>({name:`zotquery_library_${suffix}`,description:`Library ${suffix}`,inputSchema:{type:"object",properties:{library:{type:"string"},collectionKey:{type:"string"},itemKey:{type:"string"},query:{type:"string"},offset:{type:"integer"},limit:{type:"integer"}},required:suffix==="get_collection_items"?["collectionKey"]:["get_item","list_children","read_attachment_fulltext"].includes(suffix)?["itemKey"]:[]}})),
+        {name:'zotquery_library_organize_preview',description:'Preview item changes',inputSchema:{type:'object',properties:{library:{type:'string'},changes:{type:'array',items:{type:'object'}}},required:['library','changes']}},
+        {name:'zotquery_library_apply_plan',description:'Apply preview',inputSchema:{type:'object',properties:{planId:{type:'string'}},required:['planId']}},
       ];
       const called=data.params?.name;
       const result=called==='zotquery_library_search_items'||called==='zotquery_library_get_collection_items'?{results:[{key:'ABCDEFGH',data:{title:'Paper'}}],nextOffset:null}:called==='zotquery_library_read_attachment_fulltext'?{text:'Original',nextOffset:null}:{called};
@@ -195,12 +197,13 @@ test("stdio MCP bridge exposes scoped native research, read-only library, and pr
     child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
     return receive();
   };
-  assert.equal((await send(1, "initialize", { protocolVersion: "2025-06-18" })).result.serverInfo.version, "3.1.25");
+  assert.equal((await send(1, "initialize", { protocolVersion: "2025-06-18" })).result.serverInfo.version, "3.1.26");
   const listed = await send(2, "tools/list");
   assert.equal(listed.result.tools.find(tool => tool.name === "zotquery_evidence_review").annotations.readOnlyHint, false);
   assert.ok(!listed.result.tools.some(tool => tool.name === "zotquery_note_profile_install"));
   assert.ok(listed.result.tools.some(tool => tool.name === "zotquery_preview_note_profile_install"));
   assert.ok(listed.result.tools.some(tool => tool.name === "zotquery_library_search_items"));
+  assert.equal(listed.result.tools.find(tool => tool.name === "zotquery_library_apply_plan").annotations.readOnlyHint,false);
   assert.ok(listed.result.tools.some(tool => tool.name === "zotquery_read_saved_image"));
   assert.ok(listed.result.tools.some(tool => tool.name === "zotquery_preview_pdf_page"));
   assert.ok(listed.result.tools.some(tool => tool.name === "zotquery_read_answer_chunk"));
@@ -263,6 +266,8 @@ test("stdio MCP bridge exposes scoped native research, read-only library, and pr
   };
   const compactList = await compactSend(20, "tools/list");
   assert.ok(compactList.result.tools.some(tool => tool.name === "zotquery_library_search_items"));
+  assert.ok(compactList.result.tools.some(tool => tool.name === "zotquery_library_organize_preview"));
+  assert.equal(compactList.result.tools.find(tool => tool.name === "zotquery_library_apply_plan").annotations.destructiveHint,true);
   assert.equal(toolContract.tools.zotquery_library_search_items.domain,"library");
   assert.equal(toolContract.tools.zotquery_evidence_visual_session_start.domain,"evidence");
   assert.equal(toolContract.tools.zotquery_set_item_tag.domain,"reading");
@@ -272,7 +277,7 @@ test("stdio MCP bridge exposes scoped native research, read-only library, and pr
   assert.equal(compactList.result.tools.find(tool => tool.name === "zotquery_reading_batch_status").annotations.readOnlyHint, true);
   assert.equal(compactList.result.tools.find(tool => tool.name === "zotquery_depth_qc_preview").annotations.readOnlyHint, true);
   assert.deepEqual(compactList.result.tools.find(tool => tool.name === "zotquery_upsert_child_note").inputSchema.properties.generation,generationSchema);
-  assert.ok(compactList.result.tools.filter(tool => !tool.annotations.readOnlyHint).every(tool => ["zotquery_create_child_note", "zotquery_upsert_child_note", "zotquery_set_item_tag", "zotquery_add_item_tag", "zotquery_evidence_visual_session_start", "zotquery_reading_batch_record_failure"].includes(tool.name)));
+  assert.ok(compactList.result.tools.filter(tool => !tool.annotations.readOnlyHint).every(tool => ["zotquery_create_child_note", "zotquery_upsert_child_note", "zotquery_set_item_tag", "zotquery_add_item_tag", "zotquery_evidence_visual_session_start", "zotquery_reading_batch_record_failure", "zotquery_library_apply_plan"].includes(tool.name)));
   assert.equal(compactList.result.tools.find(tool => tool.name === "zotquery_add_item_tag").inputSchema.required.includes("tag"), true);
   assert.equal(compactList.result.tools.find(tool => tool.name === "zotquery_evidence_visual_session_start").inputSchema.required.includes("parentItemKey"), true);
   assert.ok(!compactList.result.tools.some(tool => tool.name === "zotquery_evidence_review"));

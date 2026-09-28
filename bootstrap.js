@@ -74,6 +74,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/output-profiles.js`, ctx);
       await ctx.ZotQueryOutputProfilesBootstrap?.startup?.({ rootURI });
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/library-read-tools.js`, ctx);
+      Services.scriptloader.loadSubScript(`${rootURI}content/scripts/library-organize-tools.js`, ctx);
       Services.scriptloader.loadSubScript(`${rootURI}content/scripts/research-engine.js`, ctx);
       await ctx.ZotQueryResearchBootstrap?.startup?.({ rootURI });
       try {

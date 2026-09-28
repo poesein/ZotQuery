@@ -47,6 +47,8 @@
 
 普通笔记由 `generic` Note Profile 解析；内置的 `strawberry-vnext` 仅兼容一种精读笔记**格式**，不含个人研究方向。独立的 [深度生成协议](docs/READING-GENERATION-PROTOCOL-ZH.md) 在通过 Depth QC 后才允许写入托管笔记与完成标签。Output Profile 包括 `compact`、`standard`、`exact` 和 `exhaustive-vnext`，只改变呈现，不改变证据标准。详见[配置说明](docs/PROFILES-3.0-ZH.md)。
 
+文献库规整另有[预览与提交接口](docs/LIBRARY-ORGANIZATION-ZH.md)：可盘点标签、移动条目集合、设置普通标签与 Zotero Style 评级/简记，并查重后导入结构化元数据。
+
 ## 一次可审计研究怎样进行？
 
 1. 用 `zotquery_evidence_plan` 检查问题的 MUST/SHOULD、别名和预估范围；自动规划的硬条件也需要调用方核对。

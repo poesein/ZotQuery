@@ -7,7 +7,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "3.1.25";
+  const VERSION = "3.1.26";
   const DB = "zotquery";
   const RDB = "zotqueryresearch";
   const RFILE = "zotquery-research.sqlite";
@@ -1399,7 +1399,7 @@
     const suffix=String(name).slice("zotquery_".length);
     return ['get_selected_items','create_child_note','upsert_child_note','depth_qc_preview','set_item_tag','add_item_tag','reading_batch_status','reading_generation_profile','reading_batch_record_failure'].includes(suffix)||suffix.startsWith("library_")||suffix.startsWith("evidence_")||suffix.startsWith("research_")||suffix.startsWith("note_profile_")||suffix.startsWith("output_profile_")?suffix:`lne_${suffix}`;
   };
-  const allTools=()=>[...tools,...lneTools(),...(Zotero.ZotQueryLibrary?.toolDefinitions?.()||[]),...(Zotero.ZotQueryVision?.toolDefinitions?.()||[]),...(Zotero.ZotQueryNotes?.toolDefinitions?.()||[])].map(tool=>{
+  const allTools=()=>[...tools,...lneTools(),...(Zotero.ZotQueryLibrary?.toolDefinitions?.()||[]),...(Zotero.ZotQueryOrganizer?.toolDefinitions?.()||[]),...(Zotero.ZotQueryVision?.toolDefinitions?.()||[]),...(Zotero.ZotQueryNotes?.toolDefinitions?.()||[])].map(tool=>{
     const name=publicToolName(tool.name),policy=toolContract?.tools?.[name];
     if(toolContract&&!policy)throw new Error(`Tool contract missing: ${name}`);
     return {...tool,name,...(policy?{annotations:{readOnlyHint:policy.effect==='read',destructiveHint:!!policy.highImpact,openWorldHint:false},_meta:{'zotquery/domain':policy.domain,'zotquery/effect':policy.effect,'zotquery/contractVersion':toolContract.version}}:{})};
@@ -1407,6 +1407,7 @@
   const mcpResult=(id,obj,isError=false)=>{const images=Array.isArray(obj?.images)?obj.images:null,data=images?{...obj,images:undefined}:obj;return [200,"application/json",JSON.stringify({jsonrpc:"2.0",id:id??null,result:{content:[{type:"text",text:JSON.stringify(data,null,2)},...(images?images.filter(x=>x.mimeType==='image/png'&&typeof x.data==='string').map(x=>({type:'image',mimeType:x.mimeType,data:x.data})):[])],...(isError?{isError:true}:{})}})];};
   async function callTool(name,a){
     name=internalToolName(name);
+    if(Zotero.ZotQueryOrganizer?.supports?.(name))return Zotero.ZotQueryOrganizer.callTool(name,a||{});
     if(name.startsWith('library_'))return Zotero.ZotQueryLibrary.callTool(name,a||{});
     if(['get_selected_items','create_child_note','upsert_child_note','depth_qc_preview','set_item_tag','add_item_tag','reading_batch_status','reading_generation_profile','reading_batch_record_failure'].includes(name)){
       if(!Zotero.ZotQueryNotes?.callTool)throw Error('ZotQuery Zotero 笔记工具尚未启动');
@@ -1440,7 +1441,7 @@
     "/zotquery/health":Health,"/zotquery/lexical":Lexical,"/zotquery/plan":Plan,"/zotquery/context":Context,"/zotquery/sweep":Sweep,"/zotquery/session":Session,"/zotquery/positions":Positions,"/zotquery/document":Document,"/zotquery/review":Review,"/zotquery/fact":Fact,"/zotquery/resolve":Resolve,"/zotquery/verify-note":VerifyNote,"/zotquery/finalize":Finalize,"/zotquery/mcp":MCP,"/zotquery/contracts":Contracts,"/zotquery/bridge-read":BridgeRead
   };
 
-  async function startup({rootURI}={}){if(started)return;ensureAuthToken();if(rootURI){const raw=await Zotero.File.getResourceAsync(`${rootURI}content/profiles/tools/tool-contracts.json`);toolContract=JSON.parse(raw);if(toolContract.version!==1||!toolContract.tools||toolContract.identity?.title!=='navigation-only')throw new Error('Invalid ZotQuery tool contract');}await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startVisualPaperSession,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,bridgeRead,assessFact,nextActions,validateSessionScope,toolDefinitions:allTools,toolContract:()=>toolContract,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
+  async function startup({rootURI}={}){if(started)return;ensureAuthToken();if(rootURI){const raw=await Zotero.File.getResourceAsync(`${rootURI}content/profiles/tools/tool-contracts.json`);toolContract=JSON.parse(raw);if(toolContract.version!==2||!toolContract.tools||toolContract.identity?.title!=='navigation-only')throw new Error('Invalid ZotQuery tool contract');}await ensureZotQuery();await ensureResearchSchema();await ensureFTS(false);if(!Zotero.Server?.Endpoints)throw new Error("Zotero Local API server is unavailable");for(const [p,c] of Object.entries(classes))Zotero.Server.Endpoints[p]=c;Zotero.ZotQueryResearch={version:VERSION,health,planEvidenceQuery,lexicalSearch,context,runSweep,startVisualPaperSession,startOrchestratedResearch,promoteSurveyNotes,positions,positionContext,promoteContextChunk,documentRead,reviewPosition,recordFact,resolveFactConflict,verifyNoteSource,sessionLedger,researchResult,bridgeRead,assessFact,nextActions,validateSessionScope,toolDefinitions:allTools,toolContract:()=>toolContract,callTool,getMcpToken:ensureAuthToken,rotateMcpToken:rotateAuthToken,finalize,shutdown};started=true;log("started",VERSION);}
   async function shutdown(){for(const p of ENDPOINTS)try{delete Zotero.Server.Endpoints[p];}catch{}try{const l=await Zotero.DB.queryAsync("PRAGMA database_list");if(l?.some(r=>r.name===RDB))await Zotero.DB.queryAsync(`DETACH DATABASE ${RDB}`);}catch{}delete Zotero.ZotQueryResearch;started=false;log("stopped");}
 
   _globalThis.ZotQueryResearchBootstrap={startup,shutdown,_defaultFactRequest:defaultFactRequest};

@@ -9,10 +9,10 @@ const bridgeContract=JSON.parse(read('bridge/tool-contracts.json'));
 
 test('one contract covers native and bridge tools with explicit identity and effects',()=>{
  assert.deepEqual(bridgeContract,nativeContract);
- assert.equal(nativeContract.version,1);
+ assert.equal(nativeContract.version,2);
  assert.deepEqual(nativeContract.identity.item,['library','parentItemKey']);
  assert.equal(nativeContract.identity.title,'navigation-only');
- assert.equal(Object.values(nativeContract.tools).filter(policy=>policy.origin==='native').length,67);
+ assert.equal(Object.values(nativeContract.tools).filter(policy=>policy.origin==='native').length,73);
  assert.equal(nativeContract.tools.zotquery_add_item_tag.effect,'library-write');
  assert.equal(nativeContract.tools.zotquery_set_item_tag.effect,'reading-write');
  assert.equal(nativeContract.tools.zotquery_evidence_visual_session_start.effect,'evidence-write');
@@ -46,7 +46,7 @@ test('REST contract endpoint returns the same policy and optional native schemas
  const context={toolContract:nativeContract,Endpoint:(_methods,handler)=>handler,guard:async(_request,fn)=>fn(),qstr:request=>request.searchParams,allTools:()=>[{name:'zotquery_add_item_tag',inputSchema:{type:'object'}}]};
  vm.createContext(context);vm.runInContext(line+'\nthis.getContracts=Contracts;',context);
  const compact=await context.getContracts({searchParams:new URLSearchParams()});
- assert.equal(compact.version,1);assert.equal(compact.tools.zotquery_add_item_tag.effect,'library-write');assert.equal(compact.nativeTools,undefined);
+ assert.equal(compact.version,2);assert.equal(compact.tools.zotquery_add_item_tag.effect,'library-write');assert.equal(compact.nativeTools,undefined);
  const expanded=await context.getContracts({searchParams:new URLSearchParams('includeSchemas=1')});
  assert.equal(expanded.nativeTools[0].name,'zotquery_add_item_tag');
 });

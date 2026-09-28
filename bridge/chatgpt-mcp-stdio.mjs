@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 
 const generationSchema = JSON.parse(readFileSync(new URL("./strawberry-vnext-depth.schema.json", import.meta.url), "utf8"));
 const contract = JSON.parse(readFileSync(new URL("./tool-contracts.json", import.meta.url), "utf8"));
-if (contract.version !== 1 || !contract.tools || contract.identity?.title !== "navigation-only") throw new Error("ZotQuery tool contract is unavailable");
+if (contract.version !== 2 || !contract.tools || contract.identity?.title !== "navigation-only") throw new Error("ZotQuery tool contract is unavailable");
 
 const token = process.env.ZOTQUERY_MCP_TOKEN || "";
 const port = Number(process.env.ZOTQUERY_ZOTERO_PORT || 23119);
@@ -207,7 +207,7 @@ async function getNativeDefinitions() {
     const mutating = nativeMutating.has(original.name);
     found.set(original.name, {
       ...original,
-      description: `${original.description || original.name}${mutating ? " This operation changes the local research ledger or creates saved research state; use only when the user requests that research action." : ""}`,
+      description: `${original.description || original.name}${mutating ? contract.tools[original.name].effect === 'library-write' ? " This operation writes to the Zotero library; use only for the user's requested library change." : " This operation changes saved research state; use only for the user's requested research action." : ""}`,
       annotations: { readOnlyHint: !mutating, destructiveHint: nativeHighImpact.has(original.name), openWorldHint: false },
     });
   }
@@ -235,9 +235,9 @@ async function dispatch(request) {
   if (request.method === "initialize") return {
     protocolVersion: request.params?.protocolVersion || "2025-06-18",
     capabilities: { tools: { listChanged: false } },
-    serverInfo: { name: "ZotQuery private research workspace", version: "3.1.25" },
+    serverInfo: { name: "ZotQuery private research workspace", version: "3.1.26" },
     instructions: compactRead
-      ? "Browse the full Zotero library and saved research on demand. Page collections and batch status; process at most 3–10 papers per batch. Read the separate Reading Generation Protocol, route original research/review/design notes, and finish Depth QC before each managed-note upsert or completion tag. Original research PDF text must be paged to nextOffset=null. readingProfileId remains the idempotency namespace. Library and note hits are navigation, not direct PDF proof. Compare may use note-scoped query-term fallback; verify its line-level hits in the original source."
+      ? "Browse the full Zotero library and saved research on demand. For library organization, page the item/tag inventory, preview explicit item changes or structured imports, inspect the proposed changes and duplicate warnings, then apply only the intended plan ID. Page collections and batch status; process at most 3–10 papers per reading batch. Read the separate Reading Generation Protocol, route original research/review/design notes, and finish Depth QC before each managed-note upsert or completion tag. Original research PDF text must be paged to nextOffset=null. readingProfileId remains the idempotency namespace. Library and note hits are navigation, not direct PDF proof."
       : "Browse the Zotero library and read source evidence on demand, paging to nextOffset=null before claiming comprehensive coverage. Library and note hits are navigation, not direct PDF proof. Compare may use note-scoped query-term fallback; verify its line-level hits in the original source. PDF preview diagnostics separate first-attempt and fallback render time; cached previews report current latency separately. Native evidence operations can change research state; only use them when the user requests research execution or a specific update. Do not treat inferred facts or unverified images as direct PDF proof. Report blocked exact-fact gates and cite source locators. Profile install and selection are preview-only in this bridge.",
   };
   if (request.method === "ping") return {};
@@ -262,7 +262,7 @@ async function dispatch(request) {
         validate(nativeDefinition, args.arguments);
         return await nativeRpc("tools/call", { name: args.name, arguments: args.arguments }, 30 * 60 * 1000);
       }
-       if (compactRead && compactDirect.has(name)) return await nativeRpc("tools/call", { name, arguments: args }, 30000);
+       if (compactRead && compactDirect.has(name)) return await nativeRpc("tools/call", { name, arguments: args }, name==='zotquery_library_apply_plan'?120000:30000);
       if (compactRead && nativeAllowed.has(name)) throw new Error("Use the read-only catalog and call action; writes are unavailable");
       if (nativeAllowed.has(name)) return await nativeRpc("tools/call", { name, arguments: args }, 30 * 60 * 1000);
             if (name.startsWith("zotquery_preview_note_profile_") || name === "zotquery_preview_output_profile_install") return await callPreview(name, args);
